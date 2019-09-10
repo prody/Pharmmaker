@@ -7,24 +7,28 @@ namespace eval ::highAff:: {
   namespace export highAff
 
   ############ Check and adjust #################
-  # PDB file name and path
+  #  0. PDB file name and path
   variable struc      '../drugui-simulation/protein-probe.pdb'
-  # DCD file name and path
+  #  1. DCD file name and path
   variable dcd_list { '../drugui-simulation/protein-probe.dcd' }
-  # binding value cutoff for assigning high affinity residues
+  #  2. binding value cutoff for assigning high affinity residues
   variable bv_cutoff 500
-  # protein chain ID in pdb
+  #  3. protein chain ID in pdb
   variable CHAIN      all
-  # first residue number of protein for analysis
+  #  4. first residue number of protein for analysis
   variable RESIDFIRST first
-  # last residue number of protein for analysis
+  #  5. last residue number of protein for analysis
   variable RESIDLAST  last  
-  # Probe molecule ID in pdb
+  #  6. Probe molecule ID in pdb
   variable PROBE      all
-  # cutoff between residue and protein    
+  #  7. cutoff between residue and protein    
   variable CUTOFF     4.0
-  # frequency of dcd for analysis
+  #  8. frequency of dcd for analysis
   variable STEP       1
+  #  9. first frame number for analysis
+  variable frameFIRST first
+  # 10. last frame number for analysis
+  variable frameLAST  last 
   ############ Check and adjust #################
 }
 
@@ -37,11 +41,13 @@ for {set index 0} {$index < $argc -1} {incr index} {
   if {$index eq  4} {set ::highAff::RESIDFIRST [split [lindex $argv $index] ,]}
   if {$index eq  5} {set ::highAff::RESIDLAST [split [lindex $argv $index] ,]}
   if {$index eq  6} {set ::highAff::PROBE [split [lindex $argv $index] ,]} 
-  if {$index eq 7} {set ::highAff::CUTOFF [lindex $argv $index]}
-  if {$index eq 8} {set ::highAff::STEP [lindex $argv $index]}
+  if {$index eq  7} {set ::highAff::CUTOFF [lindex $argv $index]}
+  if {$index eq  8} {set ::highAff::STEP [lindex $argv $index]}
+  if {$index eq  9} {set ::highAff::frameFIRST [split [lindex $argv $index] ,]}
+  if {$index eq 10} {set ::highAff::frameLAST [split [lindex $argv $index] ,]}  
 }
 
-if { $argc < 10 } {
+if { $argc < 12 } {
   # 1st argument is the command then we count from 0 so this should be two more than the number above
   puts "$index input arguments were provided on the command line."
   puts "The remaining values will be taken from the script."
@@ -83,16 +89,21 @@ if { $argc eq 2 && [lindex $argv 0] eq "help" } {
   puts "CUTOFF: the binding value cutoff for assigning high affinity residues"
   puts "default value is 500"
   puts ""
+  puts "frameFIRST: the first frame to include in the analysis"
+  puts "by default, the first frame is taken"
+  puts ""
+  puts "frameLAST: the last frame to include in the analysis"
+  puts "by default, the last frame is taken"
+  puts ""
   exit
 }
 
-proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF } {
+proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF CUTOFF frameFIRST frameLAST } {
 
   if {[file exists highaffresids] eq 0} {
     file mkdir highaffresids
   }
 
-  set count 0
   set dcdNum 0
   # start loop for dcd
   foreach dcd_in $dcd_list {
@@ -100,13 +111,8 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF } {
     mol load pdb $struc
     mol addfile $dcd_in type dcd first 0 last -1 step $STEP waitfor -1
 
-    set first_frame 0
-    set num_frames [molinfo top get numframes] 
-
     # start loop for frame
-    for {set f $first_frame} {$f < $num_frames} {incr f} {
-      incr count
-      set time [expr ($count-1)*$STEP]
+    for {set f $frameFIRST } {$f <= $frameLAST } {set f [expr {$f + $STEP}]} {
       molinfo top set frame $f
 
       # start loop for chains
@@ -136,7 +142,7 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF } {
             set residSel [atomselect top "chain $CHAIN and protein and resid $RESID and not hydrogen"]
             $residSel frame $f
 
-            if { $f eq $first_frame && dcdNum eq 0 } {
+            if { $f eq $frameFIRST && dcdNum eq 0 } {
               # We use a multi-dimensional associative array for DISTSUM values.
               # We index it by counting chains, probes and residues
               # These are counted with the variables chainNum, probeNum and resCounter
@@ -183,7 +189,7 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF } {
             flush $ofile2
             close $ofile2
 
-            if { $DISTSUM > $cutoff } {
+            if { $DISTSUM > $BV_CUTOFF } {
               lappend highaffresids $rrr
             }
 
@@ -192,7 +198,7 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF } {
           # end loop for residue
           $probeSel delete
 
-          if { $chainNum eq 0 && $f eq $first_frame && dcdNum eq 0 } {
+          if { $chainNum eq 0 && $f eq $frameFIRST && dcdNum eq 0 } {
             set pfile [open probe-list.dat a]
             puts $pfile $PROBE
             flush $pfile
@@ -216,7 +222,7 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF } {
         # end loop for probes
         incr chainNum
 
-        if { $f eq $first_frame && dcdNum eq 0 } {
+        if { $f eq $frameFIRST && dcdNum eq 0 } {
           set cfile [open chain-list.dat a]
           puts $cfile $CHAIN
           flush $cfile
@@ -292,6 +298,24 @@ proc findResidRange { struc chains } {
   mol delete top
 }
 
+proc findFrameRange { struc dcd_in } {
+  mol load pdb $struc
+  incr ::highAff::mol_ID
+  mol addfile $dcd_in type dcd first 0 last -1 step 1 waitfor -1
+
+  if { $::highAff::frameFIRST eq "first" } {
+    set ::highAff::frameFIRST 1
+  }
+    
+  if { $::highAff::frameLAST eq "last" } {
+    set num_frames [molinfo top get numframes]
+    set ::highAff::frameLAST [expr $num_frames - 1]
+  }
+
+  animate delete all
+  mol delete top
+}
+
 ##############################################################################
 # Call those procs if values aren't already provided
 
@@ -307,11 +331,15 @@ if { $::highAff::RESIDFIRST eq "first" || $::highAff::RESIDLAST eq "last" } {
   findResidRange $::highAff::struc $::highAff::CHAIN
 }
 
+if { $::highAff::frameFIRST eq "first" || $::highAff::frameLAST eq "last" } {
+  findFrameRange $::highAff::struc $::highAff::dcd_in
+}
+
 ##############################################################################
 # Call the the main proc with error handling
 
 if {[catch { 
-  findHighAffResids $::highAff::struc $::highAff::dcd_in $::highAff::CHAIN $::highAff::PROBE $::highAff::RESID $::highAff::STEP $::highAff::bv_cutoff
+  findHighAffResids $::highAff::struc $::highAff::dcd_in $::highAff::CHAIN $::highAff::PROBE $::highAff::RESID $::highAff::STEP $::highAff::bv_cutoff $::highAff::CUTOFF $::highAff::frameFIRST $::highAff::frameLAST
 } errvar ]} {
   puts $errvar
 } else {
