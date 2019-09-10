@@ -98,7 +98,7 @@ if { $argc eq 2 && [lindex $argv 0] eq "help" } {
   exit
 }
 
-proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF CUTOFF frameFIRST frameLAST } {
+proc findHighAffResids { struc dcd_list CHAINS PROBES RESIDFIRST RESIDLAST STEP BV_CUTOFF CUTOFF frameFIRST frameLAST } {
 
   if {[file exists highaffresids] eq 0} {
     file mkdir highaffresids
@@ -114,13 +114,16 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF CUTOF
     # start loop for frame
     for {set f $frameFIRST } {$f <= $frameLAST } {set f [expr {$f + $STEP}]} {
       molinfo top set frame $f
+      if { [expr $f % 100] eq 0 } {
+        puts "starting loop for frame $f"
+      }
 
       # start loop for chains
       set chainNum 0
       foreach CHAIN $CHAINS {
-        puts ""
-        puts "starting loop for chain $CHAIN"
-        puts ""
+        #puts ""
+        #puts "starting loop for chain $CHAIN"
+        #puts ""
 
         # start loop for probes
         set probeNum 0
@@ -128,21 +131,18 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF CUTOF
           set probeSel [atomselect top "resname $PROBE and not hydrogen"]
           $probeSel frame $f
 
-          puts "This analysis will run from residue [lindex $RESIDFIRST $chainNum] to residue [lindex $RESIDLAST $chainNum]"
-          puts ""
+          #puts "This analysis will run from residue [lindex $RESIDFIRST $chainNum] to residue [lindex $RESIDLAST $chainNum]"
+          #puts ""
 
-          set highaffresid {}
+          set highaffresids {}
           # start loop for residue
           set resCounter 0
           for {set rrr [lindex $RESIDFIRST $chainNum] } {$rrr <= [lindex $RESIDLAST $chainNum] } {incr rrr} {
 
-            set ofile   [open highaffresids/$CHAIN-$PROBE.dat w]
-            set ofile2  [open highaffresids/detail-$CHAIN-$PROBE.dat w]
-
-            set residSel [atomselect top "chain $CHAIN and protein and resid $RESID and not hydrogen"]
+            set residSel [atomselect top "chain $CHAIN and protein and resid $rrr and not hydrogen"]
             $residSel frame $f
 
-            if { $f eq $frameFIRST && dcdNum eq 0 } {
+            if { $f eq $frameFIRST && $dcdNum eq 0 } {
               # We use a multi-dimensional associative array for DISTSUM values.
               # We index it by counting chains, probes and residues
               # These are counted with the variables chainNum, probeNum and resCounter
@@ -173,7 +173,6 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF CUTOF
               set pha_vec1 [lindex [$pha1 get {resname}] 0]
               set pha_vec2 [lindex [$pha1 get {resid}] 0]
               set pha_vec3 [lindex [$pha1 get {name}] 0]
-              puts $ofile2 "$f $aato1 $pha_vec1 $pha_vec2 $pha_vec3  $aato2 $phe_vec1 $phe_vec2 $phe_vec3  $DIST $DISTV"
               }
             }
 
@@ -181,16 +180,15 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF CUTOF
 
             $residSel delete
 
-            puts $ofile "$RESID  $DISTSUM"
-            animate delete all
-            flush $ofile
-            close $ofile
+            if { $f eq $frameLAST } {
+              set ofile   [open highaffresids/$CHAIN-$PROBE.dat a]
+              puts $ofile "$rrr  $DISTSUM"
+              flush $ofile
+              close $ofile
 
-            flush $ofile2
-            close $ofile2
-
-            if { $DISTSUM > $BV_CUTOFF } {
-              lappend highaffresids $rrr
+              if { $DISTSUM > $BV_CUTOFF } {
+                lappend highaffresids $rrr
+              }
             }
 
             incr resCounter
@@ -198,19 +196,19 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF CUTOF
           # end loop for residue
           $probeSel delete
 
-          if { $chainNum eq 0 && $f eq $frameFIRST && dcdNum eq 0 } {
+          if { $chainNum eq 0 && $f eq $frameFIRST && $dcdNum eq 0 } {
             set pfile [open probe-list.dat a]
             puts $pfile $PROBE
             flush $pfile
             close $pfile
           }
 
-          set hfile  [open highaffresids/$CHAIN-$PROBE-highaffresid.dat a]
-          puts $hfile "$highaffresids"
-          flush $hfile
-          close $hfile
-
           if {[llength $highaffresids] > 0} {
+            set hfile  [open highaffresids/$CHAIN-$PROBE-highaffresid.dat a]
+            puts $hfile "$highaffresids"
+            flush $hfile
+            close $hfile
+
             set hfile2  [open highaffresid.dat a]
             puts $hfile2 "$PROBE $CHAIN $highaffresids"
             flush $hfile2
@@ -222,7 +220,7 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF CUTOF
         # end loop for probes
         incr chainNum
 
-        if { $f eq $frameFIRST && dcdNum eq 0 } {
+        if { $f eq $frameFIRST && $dcdNum eq 0 } {
           set cfile [open chain-list.dat a]
           puts $cfile $CHAIN
           flush $cfile
@@ -235,7 +233,7 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF CUTOF
     # end loop for frame
   }
   # end loop dcd list
-
+  animate delete all
 }
 # end proc
 
@@ -331,6 +329,22 @@ if { $::highAff::RESIDFIRST eq "first" || $::highAff::RESIDLAST eq "last" } {
   findResidRange $::highAff::struc $::highAff::CHAIN
 }
 
+if { [llength $::highAff::RESIDFIRST] eq 1 } {
+  set RESIDFIRST $::highAff::RESIDFIRST
+  set ::highAff::RESIDFIRST {}
+  foreach CHAIN $::highAff::CHAIN {
+    lappend ::highAff::RESIDFIRST $RESIDFIRST
+  }
+}
+
+if { [llength $::highAff::RESIDLAST] eq 1 } {
+  set RESIDLAST $::highAff::RESIDLAST
+  set ::highAff::RESIDLAST {}
+  foreach CHAIN $::highAff::CHAIN {
+    lappend ::highAff::RESIDLAST $RESIDLAST
+  }
+}
+
 if { $::highAff::frameFIRST eq "first" || $::highAff::frameLAST eq "last" } {
   findFrameRange $::highAff::struc $::highAff::dcd_in
 }
@@ -339,7 +353,7 @@ if { $::highAff::frameFIRST eq "first" || $::highAff::frameLAST eq "last" } {
 # Call the the main proc with error handling
 
 if {[catch { 
-  findHighAffResids $::highAff::struc $::highAff::dcd_in $::highAff::CHAIN $::highAff::PROBE $::highAff::RESID $::highAff::STEP $::highAff::bv_cutoff $::highAff::CUTOFF $::highAff::frameFIRST $::highAff::frameLAST
+  findHighAffResids $::highAff::struc $::highAff::dcd_in $::highAff::CHAIN $::highAff::PROBE $::highAff::RESIDFIRST $::highAff::RESIDLAST $::highAff::STEP $::highAff::bv_cutoff $::highAff::CUTOFF $::highAff::frameFIRST $::highAff::frameLAST
 } errvar ]} {
   puts $errvar
 } else {
