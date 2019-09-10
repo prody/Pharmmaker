@@ -22,18 +22,7 @@ CUTOFF=4.0
 STEP=1
 ######### Check here  #######
 
-for FCHAIN in $CHAIN
-do
-  for FPROBE in $PROBE
-  do
-    for (( FF = $FIRSTRESID ; FF <= $LASTRESID  ; FF++ ))
-    do
-    env VMDARGS='text with blanks' vmd -dispdev text -e TCL/highaffresid.tcl $PDB $DCD $FCHAIN $FF $FPROBE $CUTOFF $STEP
-    cat _out-$FCHAIN-$FPROBE.dat        >> out-$FCHAIN-$FPROBE.dat
-    cat _out-detail-$FCHAIN-$FPROBE.dat >> out-detail-$FCHAIN-$FPROBE.dat
-    done
-  done
-done
+env VMDARGS='text with blanks' vmd -dispdev text -e TCL/highaffresid.tcl $PDB $DCD $FCHAIN $FF $FPROBE $CUTOFF $STEP
 
 mkdir highaffresid
 mv out-* highaffresid
