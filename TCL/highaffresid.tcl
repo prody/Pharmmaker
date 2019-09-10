@@ -11,6 +11,8 @@ namespace eval ::highAff:: {
   variable struc      '../drugui-simulation/protein-probe.pdb'
   # DCD file name and path
   variable dcd_list { '../drugui-simulation/protein-probe.dcd' }
+  # binding value cutoff for assigning high affinity residues
+  variable bv_cutoff 500
   # protein chain ID in pdb
   variable CHAIN      all
   # first residue number of protein for analysis
@@ -30,16 +32,17 @@ namespace eval ::highAff:: {
 for {set index 0} {$index < $argc -1} {incr index} {
   if {$index eq  0} {set ::highAff::struc [split [lindex $argv $index] ,]}
   if {$index eq  1} {set ::highAff::dcd_in [split [lindex $argv $index] ,]}
-  if {$index eq  2} {set ::highAff::CHAIN [split [lindex $argv $index] ,]}
-  if {$index eq  3} {set ::highAff::RESIDFIRST [split [lindex $argv $index] ,]}
-  if {$index eq  4} {set ::highAff::RESIDLAST [split [lindex $argv $index] ,]}
-  if {$index eq  5} {set ::highAff::PROBE [split [lindex $argv $index] ,]} 
-  if {$index eq 6} {set ::highAff::CUTOFF [lindex $argv $index]}
-  if {$index eq 7} {set ::highAff::STEP [lindex $argv $index]}
+  if {$index eq  2} {set ::highAff::bv_cutoff [split [lindex $argv $index] ,]}
+  if {$index eq  3} {set ::highAff::CHAIN [split [lindex $argv $index] ,]}
+  if {$index eq  4} {set ::highAff::RESIDFIRST [split [lindex $argv $index] ,]}
+  if {$index eq  5} {set ::highAff::RESIDLAST [split [lindex $argv $index] ,]}
+  if {$index eq  6} {set ::highAff::PROBE [split [lindex $argv $index] ,]} 
+  if {$index eq 7} {set ::highAff::CUTOFF [lindex $argv $index]}
+  if {$index eq 8} {set ::highAff::STEP [lindex $argv $index]}
 }
 
-if { $argc < 7 } {
-  # 1st argument counted is the command itself so this should be one more than the number above
+if { $argc < 10 } {
+  # 1st argument is the command then we count from 0 so this should be two more than the number above
   puts "$index input arguments were provided on the command line."
   puts "The remaining values will be taken from the script."
 }
@@ -59,6 +62,9 @@ if { $argc eq 2 && [lindex $argv 0] eq "help" } {
   puts "dcd_in: path to DCD file(s) for druggability simulation(s)"
   puts "any number of DCD files can be provided as long as you meet the rule above about PDB files"
   puts "default value: ../md/sim.dcd"
+  puts ""
+  puts "bv_cutoff: the binding value cutoff for assigning high affinity residues"
+  puts "default value is 500"
   puts ""
   puts "CHAIN: the chains to analyze"
   puts "by default, all chains are analyzed"
@@ -80,7 +86,7 @@ if { $argc eq 2 && [lindex $argv 0] eq "help" } {
   exit
 }
 
-proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP } {
+proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF } {
 
   # start loop for chains
   set chainNum 0
@@ -96,13 +102,11 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP } {
 
       puts "This analysis will run from residue [lindex $RESIDFIRST $chainNum] to residue [lindex $RESIDLAST $chainNum]"
       puts ""
-      set resids {}
-      for {set rrr [lindex $RESIDFIRST $chainNum] } {$rrr <= [lindex $RESIDLAST $chainNum] } {incr rrr} {
-        lappend resids $rrr
-      }
 
+      set highaffresid {}
       # start loop for residue
-      foreach rrr $resids {
+      for {set rrr [lindex $RESIDFIRST $chainNum] } {$rrr <= [lindex $RESIDLAST $chainNum] } {incr rrr} {
+
         set DISTSUM 0
         set ofile   [open _out-$CHAIN-$PROBE.dat w]
         set ofile2  [open _out-detail-$CHAIN-$PROBE.dat w]
@@ -161,6 +165,10 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP } {
         animate delete all
         flush $ofile
         close $ofile
+
+        if { $DISTSUM > $cutoff } {
+          lappend highaffresids $rrr
+        }
       }
       # end loop for residue
       $probeSel delete
@@ -171,6 +179,19 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP } {
         flush $pfile
         close $pfile
       }
+
+      set hfile  [open $CHAIN-$PROBE-highaffresid.dat a]
+      puts $hfile "$highaffresids"
+      flush $hfile
+      close $hfile
+
+      if {[llength $highaffresids] > 0} {
+        set hfile2  [open highaffresid.dat a]
+        puts $hfile2 "$PROBE $CHAIN $highaffresids"
+        flush $hfile2
+        close $hfile2
+      }
+
     }
     # end loop for probes
     incr chainNum
@@ -263,7 +284,7 @@ if { $::highAff::RESIDFIRST eq "first" || $::highAff::RESIDLAST eq "last" } {
 # Call the the main proc with error handling
 
 if {[catch { 
-  findHighAffResids $::highAff::struc $::highAff::dcd_in $::highAff::CHAIN $::highAff::PROBE $::highAff::RESID $::highAff::STEP
+  findHighAffResids $::highAff::struc $::highAff::dcd_in $::highAff::CHAIN $::highAff::PROBE $::highAff::RESID $::highAff::STEP $::highAff::bv_cutoff
 } errvar ]} {
   puts $errvar
 } else {
