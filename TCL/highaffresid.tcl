@@ -26,11 +26,11 @@ namespace eval ::highAff:: {
 
 # Take parameter values from input arguments as far as possible
 for {set index 0} {$index < $argc -1} {incr index} {
-  if {$index eq  0} {set ::highAff::struc [lindex $argv $index]}
-  if {$index eq  1} {set ::highAff::dcd_in [lindex $argv $index]}
-  if {$index eq  2} {set ::highAff::CHAIN [lindex $argv $index]}
+  if {$index eq  0} {set ::highAff::struc [split [lindex $argv $index] ,]}
+  if {$index eq  1} {set ::highAff::dcd_in [split [lindex $argv $index] ,]}
+  if {$index eq  2} {set ::highAff::CHAIN [split [lindex $argv $index] ,]}
   if {$index eq  3} {set ::highAff::RESID [lindex $argv $index]}
-  if {$index eq  4} {set ::highAff::PROBE [lindex $argv $index]} 
+  if {$index eq  4} {set ::highAff::PROBE [split [lindex $argv $index] ,]} 
   if {$index eq 5} {set ::highAff::CUTOFF [lindex $argv $index]}
   if {$index eq 6} {set ::highAff::STEP [lindex $argv $index]}
 }
