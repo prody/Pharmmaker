@@ -23,6 +23,3 @@ STEP=1
 ######### Check here  #######
 
 env VMDARGS='text with blanks' vmd -dispdev text -e TCL/highaffresid.tcl $PDB $DCD $FCHAIN $FF $FPROBE $CUTOFF $STEP
-
-mkdir highaffresid
-mv out-* highaffresid

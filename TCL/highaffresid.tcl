@@ -88,6 +88,10 @@ if { $argc eq 2 && [lindex $argv 0] eq "help" } {
 
 proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF } {
 
+  if {[file exists highaffresids] eq 0} {
+    file mkdir highaffresids
+  }
+
   # start loop for chains
   set chainNum 0
   foreach CHAIN $CHAINS {
@@ -108,8 +112,8 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF } {
       for {set rrr [lindex $RESIDFIRST $chainNum] } {$rrr <= [lindex $RESIDLAST $chainNum] } {incr rrr} {
 
         set DISTSUM 0
-        set ofile   [open _out-$CHAIN-$PROBE.dat w]
-        set ofile2  [open _out-detail-$CHAIN-$PROBE.dat w]
+        set ofile   [open highaffresids/$CHAIN-$PROBE.dat w]
+        set ofile2  [open highaffresids/detail-$CHAIN-$PROBE.dat w]
         set count 0
 
         # start loop for dcd
@@ -137,7 +141,7 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF } {
               set KKKA  [lindex [lindex $MECO 0 ] $mmm ]
               set KKKB  [lindex [lindex $MECO 1 ] $mmm ]
               set DIST  [measure bond [list [list $KKKA] [list $KKKB]]]    
-              set DISTSUM [expr $DISTSUM+ 1/(($DIST)*($DIST))]
+              set DISTSUM [expr $DISTSUM + 1/(($DIST)*($DIST))]
 
               set DISTV [expr 1/(($DIST)*($DIST))]
               set aato1 [expr $KKKA+1]
@@ -166,6 +170,9 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF } {
         flush $ofile
         close $ofile
 
+        flush $ofile2
+        close $ofile2
+
         if { $DISTSUM > $cutoff } {
           lappend highaffresids $rrr
         }
@@ -180,7 +187,7 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF } {
         close $pfile
       }
 
-      set hfile  [open $CHAIN-$PROBE-highaffresid.dat a]
+      set hfile  [open highaffresids/$CHAIN-$PROBE-highaffresid.dat a]
       puts $hfile "$highaffresids"
       flush $hfile
       close $hfile
