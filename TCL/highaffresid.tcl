@@ -92,47 +92,60 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF } {
     file mkdir highaffresids
   }
 
-  # start loop for chains
-  set chainNum 0
-  foreach CHAIN $CHAINS {
-    puts ""
-    puts "starting loop for chain $CHAIN"
-    puts ""
+  set count 0
+  set dcdNum 0
+  # start loop for dcd
+  foreach dcd_in $dcd_list {
 
-    # start loop for probes
-    foreach PROBE $PROBES {
-      set probeSel [atomselect top "resname $PROBE and not hydrogen"]
-      $probeSel frame $f
+    mol load pdb $struc
+    mol addfile $dcd_in type dcd first 0 last -1 step $STEP waitfor -1
 
-      puts "This analysis will run from residue [lindex $RESIDFIRST $chainNum] to residue [lindex $RESIDLAST $chainNum]"
-      puts ""
+    set first_frame 0
+    set num_frames [molinfo top get numframes] 
 
-      set highaffresid {}
-      # start loop for residue
-      for {set rrr [lindex $RESIDFIRST $chainNum] } {$rrr <= [lindex $RESIDLAST $chainNum] } {incr rrr} {
+    # start loop for frame
+    for {set f $first_frame} {$f < $num_frames} {incr f} {
+      incr count
+      set time [expr ($count-1)*$STEP]
+      molinfo top set frame $f
 
-        set DISTSUM 0
-        set ofile   [open highaffresids/$CHAIN-$PROBE.dat w]
-        set ofile2  [open highaffresids/detail-$CHAIN-$PROBE.dat w]
-        set count 0
+      # start loop for chains
+      set chainNum 0
+      foreach CHAIN $CHAINS {
+        puts ""
+        puts "starting loop for chain $CHAIN"
+        puts ""
 
-        # start loop for dcd
-        foreach dcd_in $dcd_list {
+        # start loop for probes
+        set probeNum 0
+        foreach PROBE $PROBES {
+          set probeSel [atomselect top "resname $PROBE and not hydrogen"]
+          $probeSel frame $f
 
-          mol load pdb $struc
-          mol addfile $dcd_in type dcd first 0 last -1 step $STEP waitfor -1
+          puts "This analysis will run from residue [lindex $RESIDFIRST $chainNum] to residue [lindex $RESIDLAST $chainNum]"
+          puts ""
 
-          set first_frame 0
-          set num_frames [molinfo top get numframes] 
+          set highaffresid {}
+          # start loop for residue
+          set resCounter 0
+          for {set rrr [lindex $RESIDFIRST $chainNum] } {$rrr <= [lindex $RESIDLAST $chainNum] } {incr rrr} {
 
-          # start loop for frame
-          for {set f $first_frame} {$f < $num_frames} {incr f} {
-            incr count
-            set time [expr ($count-1)*$STEP]
-            molinfo top set frame $f
+            set ofile   [open highaffresids/$CHAIN-$PROBE.dat w]
+            set ofile2  [open highaffresids/detail-$CHAIN-$PROBE.dat w]
 
             set residSel [atomselect top "chain $CHAIN and protein and resid $RESID and not hydrogen"]
             $residSel frame $f
+
+            if { $f eq $first_frame && dcdNum eq 0 } {
+              # We use a multi-dimensional associative array for DISTSUM values.
+              # We index it by counting chains, probes and residues
+              # These are counted with the variables chainNum, probeNum and resCounter
+              # Each DISTSUM value should be the sum of inverse square distances within a cutoff (binding values) 
+              set DISTSUMS($chainNum,$probeNum,$resCounter) 0
+              # It gets initialised the first time we fill it
+              # We then update DISTSUM from it each time and fill it back up again
+            }
+            set DISTSUM $DISTSUMS($chainNum,$probeNum,$resCounter)
 
             set MECO  [measure contacts $CUTOFF $residSel $probeSel]
             set numConts  [llength [lindex $MECO 0]] 
@@ -158,57 +171,64 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESID STEP BV_CUTOFF } {
               }
             }
 
+            set DISTSUMS($chainNum,$probeNum,$resCounter) $DISTSUM
+
+            $residSel delete
+
+            puts $ofile "$RESID  $DISTSUM"
+            animate delete all
+            flush $ofile
+            close $ofile
+
+            flush $ofile2
+            close $ofile2
+
+            if { $DISTSUM > $cutoff } {
+              lappend highaffresids $rrr
+            }
+
+            incr resCounter
           }
-          # end loop for frame
+          # end loop for residue
+          $probeSel delete
+
+          if { $chainNum eq 0 && $f eq $first_frame && dcdNum eq 0 } {
+            set pfile [open probe-list.dat a]
+            puts $pfile $PROBE
+            flush $pfile
+            close $pfile
+          }
+
+          set hfile  [open highaffresids/$CHAIN-$PROBE-highaffresid.dat a]
+          puts $hfile "$highaffresids"
+          flush $hfile
+          close $hfile
+
+          if {[llength $highaffresids] > 0} {
+            set hfile2  [open highaffresid.dat a]
+            puts $hfile2 "$PROBE $CHAIN $highaffresids"
+            flush $hfile2
+            close $hfile2
+          }
+
+          incr probeNum
         }
-        # end loop dcd list
+        # end loop for probes
+        incr chainNum
 
-        $residSel delete
-
-        puts $ofile "$RESID  $DISTSUM"
-        animate delete all
-        flush $ofile
-        close $ofile
-
-        flush $ofile2
-        close $ofile2
-
-        if { $DISTSUM > $cutoff } {
-          lappend highaffresids $rrr
+        if { $f eq $first_frame && dcdNum eq 0 } {
+          set cfile [open chain-list.dat a]
+          puts $cfile $CHAIN
+          flush $cfile
+          close $cfile
         }
       }
-      # end loop for residue
-      $probeSel delete
-
-      if { $chainNum eq 0 } {
-        set pfile [open probe-list.dat a]
-        puts $pfile $PROBE
-        flush $pfile
-        close $pfile
-      }
-
-      set hfile  [open highaffresids/$CHAIN-$PROBE-highaffresid.dat a]
-      puts $hfile "$highaffresids"
-      flush $hfile
-      close $hfile
-
-      if {[llength $highaffresids] > 0} {
-        set hfile2  [open highaffresid.dat a]
-        puts $hfile2 "$PROBE $CHAIN $highaffresids"
-        flush $hfile2
-        close $hfile2
-      }
+      # end loop for chains
 
     }
-    # end loop for probes
-    incr chainNum
-
-    set cfile [open chain-list.dat a]
-    puts $cfile $CHAIN
-    flush $cfile
-    close $cfile
+    # end loop for frame
   }
-  # end loop for chains
+  # end loop dcd list
 
 }
 # end proc
