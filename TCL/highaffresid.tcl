@@ -222,7 +222,7 @@ proc findHighAffResids { sites strucs dcd_list CHAINS PROBES RESIDFIRST RESIDLAS
       foreach dcd_in $dcd_list {
 
         if {$siteNum eq 0} {
-          set dfile [open "dcd-list.dat" a]
+          set dfile [open ../dcd-list.dat a]
           puts $dfile $dcd_in
           flush $dfile
           close $dfile
@@ -234,7 +234,7 @@ proc findHighAffResids { sites strucs dcd_list CHAINS PROBES RESIDFIRST RESIDLAS
           }
 
           if {[expr { $dcdNum < [llength $strucs] }] && $chainNum eq 0} {
-            set sfile [open "struc-list.dat" a]
+            set sfile [open ../struc-list.dat a]
             puts $sfile $struc
             flush $sfile
             close $sfile
@@ -327,7 +327,7 @@ proc findHighAffResids { sites strucs dcd_list CHAINS PROBES RESIDFIRST RESIDLAS
             incr probeNum
 
             if { $f eq $first_frame && $siteNum eq 0 && $chainNum eq 0 } {
-              set pfile [open probe-list.dat a]
+              set pfile [open ../probe-list.dat a]
               puts $pfile $PROBE
               flush $pfile
               close $pfile
@@ -373,7 +373,7 @@ proc findHighAffResids { sites strucs dcd_list CHAINS PROBES RESIDFIRST RESIDLAS
       incr chainNum
 
       if { $siteNum eq 0 } {
-        set cfile [open chain-list.dat a]
+        set cfile [open ../chain-list.dat a]
         puts $cfile $CHAIN
         flush $cfile
         close $cfile
