@@ -6,7 +6,7 @@ highaffresidsFile='highaffresid'   # file/directory path for highaffresids.dat
 proteinFile='struc-list.dat'       # file/directory for protein PDB
 CHAIN='chain-list.dat'             # chain IDs
 PROBE='probe-list.dat'             # probe types
-#dir is not set as it will follow hotspotsFile if the user doesn't provide it
+#dir is not set as it will follow highaffresidsFile if the user doesn't provide it
 
 if [[ $1 = "help" ]]; then
   echo "This script takes 6 arguments in the following order:"
