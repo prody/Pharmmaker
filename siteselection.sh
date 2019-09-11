@@ -1,11 +1,11 @@
 #!/bin/bash
 
-CL=8                            # cutoff to include hot spots
-hotspotsFile='all'             # file/directory path for hotspots PDB
-#highaffresidsFile is not set as it will follow hotspotsFile if the user doesn't provide it
-proteinFile='struc-list.dat'    # file/directory for protein PDB
-CHAIN='chain-list.dat'          # chain IDs
-PROBE='probe-list.dat'          # probe types
+CL=8                               # cutoff to include hot spots
+hotspotsFile='all'                 # file/directory path for hotspots PDB
+highaffresidsFile='highaffresid'   # file/directory path for highaffresids.dat
+proteinFile='struc-list.dat'       # file/directory for protein PDB
+CHAIN='chain-list.dat'             # chain IDs
+PROBE='probe-list.dat'             # probe types
 #dir is not set as it will follow hotspotsFile if the user doesn't provide it
 
 if [[ $1 = "help" ]]; then
@@ -225,8 +225,8 @@ for i in `seq 0 $(expr $num_haf_dirs - 1)`; do
           if [ ! -z "$highaffresids" ]; then
             echo $highaffresids
 
-            echo "running command: $PHARMMAKER_HOME/hotspotsnearhighaffresids.sh $CC $probe $CL $highaffresidsfile $proteinFile $hotspotsFile $dir"
-            $PHARMMAKER_HOME/hotspotsnearhighaffresids.sh $CC $probe $CL $highaffresidsfile $proteinFile $hotspotsFile $dir
+            echo "running command: hotspotsnearhighaffresids.sh $CC $probe $CL $highaffresidsfile $proteinFile $hotspotsFile $dir"
+            hotspotsnearhighaffresids.sh $CC $probe $CL $highaffresidsfile $proteinFile $hotspotsFile $dir
             
             if [[ -f $dir/$probe-$CC/$probe-$CC-all2-highaffresid.dat ]]; then
               cat $dir/$probe-$CC/$probe-$CC-all2-highaffresid.dat >> $dir/highaffresid2.dat
