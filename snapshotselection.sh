@@ -5,17 +5,17 @@
 
 ######### Check here  #######
 # PDB file name and path
-PDB='\/data\/z1906-tool2020\/tutorial-new\/drugui-simulationRRR\/protein-probe.pdb'
+PDB='struc-list.dat'
 # DCD file name and path RRR is variable
-DCD='\/data\/z1906-tool2020\/tutorial-new\/drugui-simulationRRR\/protein-probe.dcd'
+DCD='dcd-list.dat'
 # DCD trajectory number for RRR
 TRJNUM=' 1 '
 # frame number for each dcd         
 FRANUM=10000
 # protein chain ID in pdb
-#CHAIN=' A B '
+#CHAIN='chain-list.dat'
 # probe molecule ID in pdb
-#PROBE=' IPRO ACAM ACTT IPAM IBTN IMID '
+#PROBE='probe-list.dat' 
 # cutoff between residue and probe      
 #CUTOFF=4.0
 # cutoff between probe and hot spot
@@ -27,6 +27,69 @@ OUTDIR=' s1 '
 # cutoff of score for collecting snapshots
 CUTOFF3=1000
 ######### Check here  #######
+
+for arg in `seq 1 "$#"`; do
+  if [[ "$arg" -eq 1 ]]; then
+    PDB=$1
+  elif [[ "$arg" -eq 2 ]]; then
+    DCD=$2
+  #elif [[ "$arg" -eq 3 ]]; then
+  #  TRJNUM=$3
+  #elif [[ "$arg" -eq 4 ]]; then
+  #  FRANUM=$4
+  elif [[ "$arg" -eq 3 ]]; then
+    CHAIN=$4
+  elif [[ "$arg" -eq 4 ]]; then
+    PROBE=$4
+  #elif [[ "$arg" -eq 7 ]]; then
+  #  CUTOFF=$7
+  #elif [[ "$arg" -eq 8 ]]; then
+  #  CUTOFF2=$8
+  elif [[ "$arg" -eq 5 ]]; then
+    STEP=$5
+  elif [[ "$arg" -eq 6 ]]; then
+    OUTDIR=$6
+  elif [[ "$arg" -eq 7 ]]; then
+    CUTOFF3=$7
+  fi
+done
+
+if [[ $1 = "help" ]]; then
+  echo "This script takes up to 7 arguments in the following order"
+  echo ""
+  echo "protein PDB file path, "
+  echo ""
+  echo "protein DCD file path, "
+  echo ""
+  #echo "trajectory numbers for multiple runs, "
+  #echo ""
+  #echo "number of frames to use, "
+  #echo ""
+  #echo "chain ID, "
+  #echo ""
+  #echo "probe type, "
+  #echo ""
+  #echo "cutoff between residue and probe, "
+  #echo ""
+  #echo "cutoff between probe and hot spot, "
+  #echo ""
+  echo "step for reading the trajectories, "
+  echo ""
+  echo "output directory for results, "
+  echo ""
+  echo "cutoff of score for collecting snapshots, "
+  echo ""
+  exit
+fi
+
+# Set DCD, PDB, CHAIN and PROBE
+if [[ DCD != "*dcd" ]]; then
+  DCD=`cat $DCD` || DCD=$DCD
+fi
+
+if [[ PDB != "*pdb" ]]; then
+  PDB=`cat $PDB` || DCD=$DCD
+fi
 
 for FOUTDIR in $OUTDIR
 do
