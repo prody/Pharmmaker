@@ -11,28 +11,28 @@ namespace eval ::highAff:: {
   namespace export highAff
 
   ############ Default parameter values (change or provide) #################
-  # 0. PDB file name and path
+  #  0. PDB file name and path
   variable struc  ../md/sim.pdb     
-  # 1. DCD file name and path
+  #  1. DCD file name and path
   variable dcd_in ../md/sim.dcd
-  # 2. resids or a directory containing PDB files for refining a region of interest
-  variable region_refiner None
-  # 3. protein chain ID in pdb
+  #  2. protein chain ID in pdb
   variable CHAIN all
-  # 4. Probe molecule ID in pdb
+  #  3. Probe molecule ID in pdb
   variable PROBE all
-  # 5. binding value cutoff for assigning high affinity residues
+  #  4. binding value cutoff for assigning high affinity residues
   variable bv_cutoff 500
-  # 6. cutoff for selecting residues as being near hotspots
-  variable region_point_residue_cutoff 8
-  # 7. first residue number of protein for analysis
+  #  5. first residue number of protein for analysis
   variable RESIDFIRST first
-  # 8. last residue number of protein for analysis
+  #  6. last residue number of protein for analysis
   variable RESIDLAST  last  
-  # 9. first frame number for analysis
+  #  7. first frame number for analysis
   variable frameFIRST first
-  # 10. last frame number for analysis
+  #  8. last frame number for analysis
   variable frameLAST  last  
+  #  9. resids or a directory containing PDB files for refining a region of interest
+  variable region_refiner None
+  # 10. cutoff for selecting residues as being near hotspots
+  variable region_point_residue_cutoff 8
   ############ Default parameter values (change or provide) #################
 
   # namespace variable for storing residue range generated from RESIDFIRST, RESIDLAST and/or hotspots
@@ -50,18 +50,18 @@ namespace eval ::highAff:: {
 for {set index 0} {$index < $argc -1} {incr index} {
   if {$index eq  0} {set ::highAff::struc [split [lindex $argv $index] ,]}
   if {$index eq  1} {set ::highAff::dcd_in [split [lindex $argv $index] ,]}
-  if {$index eq  2} {set ::highAff::region_refiner [split [lindex $argv $index] ,]}
-  if {$index eq  3} {set ::highAff::CHAIN [split [lindex $argv $index] ,]}
-  if {$index eq  4} {set ::highAff::PROBE [split [lindex $argv $index] ,]}
-  if {$index eq  5} {set ::highAff::bv_cutoff [split [lindex $argv $index] ,]}
-  if {$index eq  6} {set ::highAff::region_point_residue_cutoff [lindex $argv $index]}
-  if {$index eq  7} {set ::highAff::RESIDFIRST [split [lindex $argv $index] ,]}
-  if {$index eq  8} {set ::highAff::RESIDLAST [split [lindex $argv $index] ,]}
-  if {$index eq  9} {set ::highAff::frameFIRST [split [lindex $argv $index] ,]}
-  if {$index eq 10} {set ::highAff::frameLAST [split [lindex $argv $index] ,]}  
+  if {$index eq  2} {set ::highAff::CHAIN [split [lindex $argv $index] ,]}
+  if {$index eq  3} {set ::highAff::PROBE [split [lindex $argv $index] ,]}
+  if {$index eq  4} {set ::highAff::bv_cutoff [split [lindex $argv $index] ,]}
+  if {$index eq  5} {set ::highAff::RESIDFIRST [split [lindex $argv $index] ,]}
+  if {$index eq  6} {set ::highAff::RESIDLAST [split [lindex $argv $index] ,]}
+  if {$index eq  7} {set ::highAff::frameFIRST [split [lindex $argv $index] ,]}
+  if {$index eq  8} {set ::highAff::frameLAST [split [lindex $argv $index] ,]}
+  if {$index eq  9} {set ::highAff::region_refiner [split [lindex $argv $index] ,]}
+  if {$index eq 10} {set ::highAff::region_point_residue_cutoff [lindex $argv $index]}  
 }
 
-if {$index eq 8} {set ::highAff::RESIDLAST $::highAff::RESIDFIRST}
+if {$index eq 6} {set ::highAff::RESIDLAST $::highAff::RESIDFIRST}
 
 set refiners {}
 foreach refiner $::highAff::region_refiner {
@@ -98,9 +98,6 @@ if { $argc eq 2 && [lindex $argv 0] eq "help" } {
   puts "any number of DCD files can be provided as long as you meet the rule above about PDB files"
   puts "default value: ../md/sim.dcd"
   puts ""
-  puts "region_refiner: resids or a directory containing PDB files for refining a region of interest"
-  puts "default value is None"
-  puts ""
   puts "CHAIN: the chains to analyze"
   puts "by default, all chains are analyzed"
   puts ""
@@ -109,9 +106,6 @@ if { $argc eq 2 && [lindex $argv 0] eq "help" } {
   puts ""
   puts "bv_cutoff: the binding value cutoff for assigning high affinity residues"
   puts "default value is 500"
-  puts ""
-  puts "region_point_residue_cutoff: the cutoff for interactions of region-defining points with residues in the initial structure"
-  puts "for region of interest selection from hotspots. Default value is 8 A."
   puts ""
   puts "RESIDFIRST: the first residue to include in the analysis for each chain"
   puts "by default, the first residue in each chain is taken"
@@ -130,6 +124,12 @@ if { $argc eq 2 && [lindex $argv 0] eq "help" } {
   puts "by default, the last frame is taken"
   puts ""
   puts "To set a frame range of interest, provide the same list to frameFIRST and frameLAST"
+  puts ""
+  puts "region_refiner: resids or a directory containing PDB files for refining a region of interest"
+  puts "default value is None"
+  puts ""
+  puts "region_point_residue_cutoff: the cutoff for interactions of region-defining points with residues in the initial structure"
+  puts "for region of interest selection from hotspots. Default value is 8 A."
   puts ""
   exit
 }
