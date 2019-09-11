@@ -8,7 +8,7 @@ namespace eval ::highAff:: {
 
   ############ Check and adjust #################
   #  0. PDB file name and path
-  variable struc      '../drugui-simulation/protein-probe.pdb'
+  variable struc    { '../drugui-simulation/protein-probe.pdb' }
   #  1. DCD file name and path
   variable dcd_list { '../drugui-simulation/protein-probe.dcd' }
   #  2. binding value cutoff for assigning high affinity residues
@@ -98,7 +98,7 @@ if { $argc eq 2 && [lindex $argv 0] eq "help" } {
   exit
 }
 
-proc findHighAffResids { struc dcd_list CHAINS PROBES RESIDFIRST RESIDLAST STEP BV_CUTOFF CUTOFF frameFIRST frameLAST } {
+proc findHighAffResids { strucs dcd_list CHAINS PROBES RESIDFIRST RESIDLAST STEP BV_CUTOFF CUTOFF frameFIRST frameLAST } {
 
   if {[file exists highaffresids] eq 0} {
     file mkdir highaffresids
@@ -107,6 +107,22 @@ proc findHighAffResids { struc dcd_list CHAINS PROBES RESIDFIRST RESIDLAST STEP 
   set dcdNum 0
   # start loop for dcd
   foreach dcd_in $dcd_list {
+
+    if { [llength $strucs] > 1 } {
+      set struc [lindex $strucs $dcdNum]
+      set sfile [open "struc-list.dat" a]
+      puts $sfile $struc
+      flush $sfile
+      close $sfile
+    } else {
+      set struc $strucs
+      if {$dcdNum eq 0} {
+        set sfile [open "struc-list.dat" a]
+        puts $sfile $struc
+        flush $sfile
+        close $sfile
+      }
+    }
 
     mol load pdb $struc
     mol addfile $dcd_in type dcd first 0 last -1 step $STEP waitfor -1
