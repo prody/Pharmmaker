@@ -21,7 +21,7 @@ for {set index 0} {$index < $argc -1} {incr index} {
 }
 
 set count 0
-animate read pdb $input beg 0 end -1 skip SSTEP waitfor all
+animate read pdb $input beg 0 end -1 skip $interval waitfor all
 
 set first_frame 0
 set num_frames [molinfo top get numframes] 
