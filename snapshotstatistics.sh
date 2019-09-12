@@ -93,10 +93,8 @@ fi
 PDB=`echo $PDB | sed 's/ /,/'`
 
 CHAIN=`cat $CHAIN` || CHAIN=$CHAIN
-CHAIN=`echo $CHAIN | sed 's/ /,/'`
 
 PROBE=`cat $PROBE` || PROBE=$PROBE
-PROBE=`echo $PROBE | sed 's/ /,/'`
 
 for FOUTDIR in $OUTDIR
 do
@@ -120,7 +118,7 @@ mkdir __run
 for FF in $TRJNUM
 do
 cd __run
-env VMDARGS='text with blanks' vmd -dispdev text -e $PHARMMAKER_HOME/snapshot1.tcl -args $PDB $DCD $STEP $CUTOFF $FPROBE $EE $FCHAIN $FF
+env VMDARGS='text with blanks' vmd -dispdev text -e $PHARMMAKER_HOME/snapshot1.tcl -args ../$PDB ../$DCD $STEP $CUTOFF $FPROBE $EE $FCHAIN $FF
 cd ..
 done
 
