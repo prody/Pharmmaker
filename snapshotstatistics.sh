@@ -8,7 +8,7 @@
 # PDB file name and path
 PDB='struc-list.dat'
 # DCD file name and path RRR is variable
-DCD='dcd-list.dat'
+DCD='traj-list.dat'
 # DCD trajectory number for RRR
 TRJNUM=' 1 '
 # frame number for each dcd         
@@ -23,6 +23,8 @@ CUTOFF=4.0
 CUTOFF2=1.5
 # frequency of dcd for analysis
 STEP=1
+# input directory
+INDIR='highaffresid'
 # output directory             
 OUTDIR=' s1 '
 ######### Check here  #######
@@ -47,7 +49,9 @@ for arg in `seq 1 "$#"`; do
   elif [[ "$arg" -eq 9 ]]; then
     STEP=$9
   elif [[ "$arg" -eq 10 ]]; then
-    OUTDIR=${10}
+    INDIR=${10}
+  elif [[ "$arg" -eq 11 ]]; then
+    OUTDIR=${11}
   fi
 done
 
@@ -81,10 +85,12 @@ fi
 if [[ DCD != "*dcd" ]]; then
   DCD=`cat $DCD` || DCD=$DCD
 fi
+DCD=`echo $DCD | sed 's/ /,/'`
 
 if [[ PDB != "*pdb" ]]; then
   PDB=`cat $PDB` || DCD=$DCD
 fi
+PDB=`echo $PDB | sed 's/ /,/'`
 
 CHAIN=`cat $CHAIN` || CHAIN=$CHAIN
 
@@ -92,12 +98,15 @@ PROBE=`cat $PROBE` || PROBE=$PROBE
 
 for FOUTDIR in $OUTDIR
 do
+
+mkdir -p snapshot-$FOUTDIR
+
 for FCHAIN in $CHAIN
 do
 for FPROBE in $PROBE
 do
 
-grep "$FPROBE $FCHAIN" ./snapshot-$FOUTDIR/input-highaffresid > ____tt
+grep "$FPROBE $FCHAIN" $INDIR/highaffresid2.dat > ____tt
 sed -e "s/$FPROBE $FCHAIN/    /g" ____tt > ____tt1
 RESID=`cat ____tt1 | awk '{print $0}'`
 
@@ -111,10 +120,8 @@ mkdir $resdir
 mkdir __run
 for FF in $TRJNUM
 do
-sed -e "s/APDB/$PDB/g" -e "s/ADCD/$DCD/g" -e "s/SSTEP/$STEP/g" -e "s/CUTOFF/$CUTOFF/g" -e "s/AAA/$FPROBE/g" -e "s/BBB/$EE/g" -e "s/CCC/$FCHAIN/g" TCL/snapshot1.tcl > ___ligb.tcl      
-sed -e "s/RRR/$FF/g" ___ligb.tcl  > __ligb.tcl
 cd __run
-vmd -dispdev text -e ../__ligb.tcl
+env VMDARGS='text with blanks' vmd -dispdev text -e $PHARMMAKER_HOME/snapshot1.tcl -args ../$PDB ../$DCD $STEP $CUTOFF $FPROBE $EE $FCHAIN $FF
 cd ..
 done
 
@@ -126,7 +133,7 @@ awk '{print $1, (NR-1) }' __test > $resdir/zlist
 rm -r __run
 ###############################
 
-grep $FPROBE ./snapshot-$FOUTDIR/hotspot.pdb > _____test0
+grep $FPROBE $INDIR/hotspots2.pdb > _____test0
 sort -n -k10 _____test0             > __test1
 
 TNUM=`wc -l __test1 | awk '{print $1}'`
@@ -160,14 +167,11 @@ rm _*
 #########
 for (( FF = 1 ; FF <= $TNUM  ; FF++ ))
 do
-sed -e "s/SSTEP/$STEP/g" -e "s/CUTOFF/$CUTOFF2/g" -e "s/AAA/resname $FPROBE and chain P and not hydrogen/g"  -e "s/BBB/resname $FPROBE and chain M and resid $FF/g" TCL/snapshot2.tcl > $resdir/__ligb.tcl
 cd $resdir
 #mkdir $kesdir
-vmd -dispdev text -e __ligb.tcl
+env VMDARGS='text with blanks' vmd -dispdev text -e $PHARMMAKER_HOME/snapshot2.tcl -args $STEP $CUTOFF2 $FPROBE $FF
 #mv ligbo-ok.dat xok*pdb    $kesdir
 mv _ligbo-ok.dat ligbo-ok.$FF.dat
-rm __ligb.tcl
-
 
 TNNN=`wc -l zlist | awk '{print $1}'`
 
@@ -267,7 +271,7 @@ mv ___tttt3 $resdir/outfr.dat
 rm _*
 #########
 
-mv $resdir snapshot-$FOUTDIR
+mv $resdir snapshot-$FOUTDIR/
 
 done
 rm _*
