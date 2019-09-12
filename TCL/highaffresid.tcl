@@ -222,7 +222,7 @@ proc findHighAffResids { sites strucs dcd_list CHAINS PROBES RESIDFIRST RESIDLAS
       foreach dcd_in $dcd_list {
 
         if {$siteNum eq 0} {
-          set dfile [open ../dcd-list.dat a]
+          set dfile [open ../traj-list.dat a]
           puts $dfile $dcd_in
           flush $dfile
           close $dfile

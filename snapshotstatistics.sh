@@ -8,7 +8,7 @@
 # PDB file name and path
 PDB='struc-list.dat'
 # DCD file name and path RRR is variable
-DCD='dcd-list.dat'
+DCD='traj-list.dat'
 # DCD trajectory number for RRR
 TRJNUM=' 1 '
 # frame number for each dcd         
