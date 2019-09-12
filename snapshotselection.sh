@@ -164,9 +164,7 @@ sed -n -e  "$bb,$bb p" _____tt2 > _____tt3
 
 PPROB=`cat _____tt3 | awk '{print $6}'`
 PPRON=`cat _____tt3 | awk '{print $8}'`
-sed -e "s/APDB/$PDB/g" -e "s/ADCD/$DCD/g" -e "s/SSTEP/$STEP/g" -e "s/AAA/$FFRAM/g" -e "s/BBB/$PPROB/g" -e "s/CCC/$PPRON/g" TCL/snapshot3.tcl > ___ligb.tcl
-sed -e "s/RRR/$FF/g" ___ligb.tcl  > __ligb.tcl
-vmd -dispdev text -e __ligb.tcl
+env VMDARGS='text with blanks' vmd -dispdev text -e $PHARMMAKER_HOME/snapshot3.tcl -args $PDB $DCD $STEP $FFRAM $PPROB $PPRON $FF
 
 mkdir snapshot-$FOUTDIR/zpdb-frame-c$CUTOFF3
 mv  pro*.pdb snapshot-$FOUTDIR/zpdb-frame-c$CUTOFF3
