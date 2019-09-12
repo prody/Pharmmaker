@@ -16,8 +16,8 @@ set hotspotNum FF
 for {set index 0} {$index < $argc -1} {incr index} {
   if {$index eq  0} {set interval [lindex $argv $index]}
   if {$index eq  1} {set CUTOFF [lindex $argv $index]}
-  if {$index eq  4} {set PROBE [lindex $argv $index]}
-  if {$index eq  5} {set hotspotNum [lindex $argv $index]}
+  if {$index eq  2} {set PROBE [lindex $argv $index]}
+  if {$index eq  3} {set hotspotNum [lindex $argv $index]}
 }
 
 set count 0

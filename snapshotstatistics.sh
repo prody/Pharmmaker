@@ -271,7 +271,7 @@ mv ___tttt3 $resdir/outfr.dat
 rm _*
 #########
 
-mv $resdir snapshot-$FOUTDIR
+mv $resdir snapshot-$FOUTDIR/
 
 done
 rm _*
