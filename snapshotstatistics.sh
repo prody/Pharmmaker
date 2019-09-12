@@ -98,6 +98,9 @@ PROBE=`cat $PROBE` || PROBE=$PROBE
 
 for FOUTDIR in $OUTDIR
 do
+
+mkdir -p snapshot-$FOUTDIR
+
 for FCHAIN in $CHAIN
 do
 for FPROBE in $PROBE
