@@ -42,7 +42,7 @@ foreach dcd_in $dcd_list {
   mol addfile $dcd_in first 0 last -1 step $interval waitfor -1
 
   if { $frameFirst eq "first" } {
-    set frameFirst 1
+    set frameFirst 0
   }
     
   if { $frameLast eq "last" } {

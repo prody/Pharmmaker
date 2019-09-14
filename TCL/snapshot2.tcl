@@ -23,7 +23,7 @@ for {set index 0} {$index < $argc -1} {incr index} {
 animate read pdb ./v-com-ok.pdb beg 0 end -1 skip 1 waitfor all
 
 if { $frameFirst eq "first" } {
-  set frameFirst 1
+  set frameFirst 0
 }
   
 if { $frameLast eq "last" } {

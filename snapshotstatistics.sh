@@ -73,12 +73,12 @@ if [[ $1 = "help" ]]; then
 fi
 
 # Set DCD, PDB, CHAIN and PROBE
-if [[ DCD != "*dcd" ]]; then
+if [[ DCD != *dcd ]]; then
   DCD=`cat $DCD` || DCD=$DCD
 fi
 DCD=`echo $DCD | sed 's/ /,/'`
 
-if [[ PDB != "*pdb" ]]; then
+if [[ PDB != *pdb ]]; then
   PDB=`cat $PDB` || PDB=$PDB
 fi
 PDB=`echo $PDB | sed 's/ /,/'`
@@ -140,7 +140,12 @@ do
     for FPROBE in $PROBE
     do
 
-    grep "$FPROBE $FCHAIN" highaffresid/$FINDIR/highaffresid2.dat > ____tt
+    if [[ $FINDIR == highaffresid* ]]; then
+      grep "$FPROBE $FCHAIN" $FINDIR/highaffresid2.dat > ____tt
+    else
+      grep "$FPROBE $FCHAIN" highaffresid/$FINDIR/highaffresid2.dat > ____tt
+    fi
+
     sed -e "s/$FPROBE $FCHAIN/    /g" ____tt > ____tt1
     RESID=`cat ____tt1 | awk '{print $0}'`
 
@@ -163,7 +168,12 @@ do
       rm -r __run
       ###############################
 
-      grep $FPROBE highaffresid/$FINDIR/hotspots2.pdb | sort -n -k10 > __test1
+      if [[ $FINDIR == highaffresid* ]]; then
+        grep $FPROBE $FINDIR/hotspots2.pdb | sort -n -k10 > __test1
+      else
+        grep $FPROBE highaffresid/$FINDIR/hotspots2.pdb | sort -n -k10 > __test1
+      fi
+      
 
       TNUM=`wc -l __test1 | awk '{print $1}'`
 
@@ -246,7 +256,7 @@ do
 
       ######### outfr.dat
       if [[ "$frameFirst" -eq "first" ]]; then
-        frameFirst=1
+        frameFirst=0
       fi
 
       if [[ "$frameLast" -eq "last" ]]; then

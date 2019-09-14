@@ -4,7 +4,7 @@
 # Druggability molecular dynamics simulations
 
 ######### Check here  #######
-CUTOFF3=1000
+CUTOFF3=''
 # input directory
 INDIR='site-list2.dat'
 # PDB file name and path
@@ -17,12 +17,18 @@ frameFirst='first'
 frameLast='last'
 ######### Check here  #######
 
+if [[ $# -lt 1 ]]; then
+  echo "Please provide a frequency score cutoff"
+  echo ""
+  exit
+fi
+
 for arg in `seq 1 "$#"`; do
   if [[ "$arg" -eq 1 ]]; then
     CUTOFF3=$1
   elif [[ "$arg" -eq 2 ]]; then
     INDIR=$2
-  if [[ "$arg" -eq 3 ]]; then
+  elif [[ "$arg" -eq 3 ]]; then
     PDB=$3
   elif [[ "$arg" -eq 4 ]]; then
     DCD=$4
@@ -60,7 +66,7 @@ if [[ $1 = "help" ]]; then
   exit
 fi
 
-# Set DCD, PDB, CHAIN and PROBE
+# Set DCD, PDB, INDIR, CHAIN and PROBE
 if [[ DCD != "*dcd" ]]; then
   DCD=`cat $DCD` || DCD=$DCD
 fi
@@ -69,9 +75,13 @@ if [[ PDB != "*pdb" ]]; then
   PDB=`cat $PDB` || DCD=$DCD
 fi
 
+if [[ -f $INDIR ]]; then
+  INDIR=`cat $INDIR`
+fi
+
 IFS=','
 INDIRS=()
-for $indir in $INDIR; do
+for indir in $INDIR; do
   INDIRS+=($indir)
 done
 INDIR=${INDIRS[@]}
@@ -83,7 +93,7 @@ do
   FOUTDIR="snapshot/`echo $FINDIR | awk -F/ '{print $NF}'`"
 
   #########
-  awk '{if ($1 >= "'"$CUTOFF3"'") print }' $FOUTDIR/zlist-count  > ___test 
+  awk -v cutoff=$CUTOFF3 '{if ($1 >= cutoff ) print }' $FOUTDIR/zlist-count > ___test 
 
   mkdir CUT$CUTOFF3
 
@@ -99,11 +109,11 @@ do
 
   ######### zlist-frame-c1000 zlist-frame-c1000-detail
   if [[ "$frameFirst" -eq "first" ]]; then
-    frameFirst=1
+    frameFirst=0
   fi
 
   if [[ "$frameLast" -eq "last" ]]; then
-    frameLast=`tail -n1 $resdir/out-?.dat | sort -n -k4 | tail -n1 | awk '{ print $NF }'`
+    frameLast=`tail -n1 $FOUTDIR/*/out-?.dat | sort -n -k4 | tail -n1 | awk '{ print $NF }'`
   fi
 
   KK=1
@@ -170,3 +180,4 @@ do
   # Extract protein and ligand ##
 
 done
+exit
