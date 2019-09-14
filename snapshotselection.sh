@@ -4,7 +4,8 @@
 # Druggability molecular dynamics simulations
 
 ######### Check here  #######
-CUTOFF3=''
+# Frequency cutoff for selecting interactions
+CUTOFF3=0.1
 # input directory
 INDIR='site-list2.dat'
 # PDB file name and path
@@ -46,7 +47,7 @@ done
 if [[ $1 = "help" ]]; then
   echo "This script takes up to 8 arguments in the following order"
   echo ""
-  echo "cutoff of frequency score for collecting snapshots, "
+  echo "cutoff frequency for interactions for selecting snapshots, "
   echo ""
   echo "input directory for results from site selection step "
   echo "This is used to locate the results from the snapshot statistics step"
@@ -114,6 +115,10 @@ do
 
   if [[ "$frameLast" -eq "last" ]]; then
     frameLast=`tail -n1 $FOUTDIR/*/out-?.dat | sort -n -k4 | tail -n1 | awk '{ print $NF }'`
+  fi
+
+  if [[ $CUTOFF3 -lt 1 ]]; then 
+    set CUTOFF3 [expr $CUTOFF3 * $frameLast]
   fi
 
   KK=1
