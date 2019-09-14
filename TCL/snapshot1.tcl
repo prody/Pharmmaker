@@ -8,25 +8,23 @@
 # Check cms
 set strucs     APDB
 set dcd_list  ADCD 
-set interval  1 
 set CUTOFF1   CUTOFF
 set PROBE     AAA
 set RESID     BBB
 set CHAIN     CCC
+set interval  1
 
 # Take parameter values from input arguments as far as possible
 for {set index 0} {$index < $argc -1} {incr index} {
   if {$index eq  0} {set strucs [split [lindex $argv $index] ,]}
   if {$index eq  1} {set dcd_list [split [lindex $argv $index] ,]}
-  if {$index eq  2} {set interval [lindex $argv $index]}
-  if {$index eq  3} {set CUTOFF1 [lindex $argv $index]}
-  if {$index eq  4} {set PROBE [lindex $argv $index]}
-  if {$index eq  5} {set RESID [lindex $argv $index]}
-  if {$index eq  6} {set CHAIN [lindex $argv $index]}
-  if {$index eq  7} {set TRJNUM [split [lindex $argv $index] ,]}
+  if {$index eq  2} {set CUTOFF1 [lindex $argv $index]}
+  if {$index eq  3} {set PROBE [lindex $argv $index]}
+  if {$index eq  4} {set RESID [lindex $argv $index]}
+  if {$index eq  5} {set CHAIN [lindex $argv $index]}
 }
 
-set TRJNUM 0
+set TRJNUM 1
 foreach dcd_in $dcd_list {
   set ofile [open ligbo-$TRJNUM.dat w]
   set count 0

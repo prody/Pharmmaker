@@ -83,7 +83,7 @@ do
   FOUTDIR="snapshot/`echo $FINDIR | awk -F/ '{print $NF}'`"
 
   #########
-  awk '{if (\$1 >= "'"$CUTOFF3"'") print }' $FOUTDIR/zlist-count  > ___test 
+  awk '{if ($1 >= "'"$CUTOFF3"'") print }' $FOUTDIR/zlist-count  > ___test 
 
   mkdir CUT$CUTOFF3
 
