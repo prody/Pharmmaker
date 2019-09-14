@@ -7,17 +7,16 @@ set ofile [open _ligbo-ok.dat w]
 # Check cms
 set input    ./v-com-ok.pdb
 
-set interval SSTEP 
+set interval 1 
 set CUTOFF CUTOFF
 set PROBE AAA
 set hotspotNum FF
 
 # Take parameter values from input arguments as far as possible
 for {set index 0} {$index < $argc -1} {incr index} {
-  if {$index eq  0} {set interval [lindex $argv $index]}
-  if {$index eq  1} {set CUTOFF [lindex $argv $index]}
-  if {$index eq  2} {set PROBE [lindex $argv $index]}
-  if {$index eq  3} {set hotspotNum [lindex $argv $index]}
+  if {$index eq  0} {set CUTOFF [lindex $argv $index]}
+  if {$index eq  1} {set PROBE [lindex $argv $index]}
+  if {$index eq  2} {set hotspotNum [lindex $argv $index]}
 }
 
 set count 0

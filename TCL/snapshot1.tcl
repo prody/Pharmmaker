@@ -6,18 +6,17 @@
 
 
 # Check cms
-set struc      APDB
-set dcd_list { ADCD }
-set interval SSTEP 
-set CUTOFF1 CUTOFF
-set PROBE AAA
-set RESID BBB
-set CHAIN CCC
-set TRJNUM RRR
+set strucs     APDB
+set dcd_list  ADCD 
+set interval  1 
+set CUTOFF1   CUTOFF
+set PROBE     AAA
+set RESID     BBB
+set CHAIN     CCC
 
 # Take parameter values from input arguments as far as possible
 for {set index 0} {$index < $argc -1} {incr index} {
-  if {$index eq  0} {set struc [split [lindex $argv $index] ,]}
+  if {$index eq  0} {set strucs [split [lindex $argv $index] ,]}
   if {$index eq  1} {set dcd_list [split [lindex $argv $index] ,]}
   if {$index eq  2} {set interval [lindex $argv $index]}
   if {$index eq  3} {set CUTOFF1 [lindex $argv $index]}
@@ -27,16 +26,19 @@ for {set index 0} {$index < $argc -1} {incr index} {
   if {$index eq  7} {set TRJNUM [split [lindex $argv $index] ,]}
 }
 
-set ofile [open ligbo-$TRJNUM.dat w]
-set count 0
-
-#write a header for the datafile 
-#  puts $ofile "#frame    Calpha_dist    N-O_dist    N-O_dist    N-O_dist    N-O_dist    N-O_dist    N-O_dist"
-
+set TRJNUM 0
 foreach dcd_in $dcd_list {
+  set ofile [open ligbo-$TRJNUM.dat w]
+  set count 0
+
+  if { [llength $strucs] > 1 } {
+    set struc [lindex $strucs $dcdNum]
+  } else {
+    set struc $strucs
+  }
 
   mol load pdb $struc
-  mol addfile $dcd_in type dcd first 0 last -1 step $interval waitfor -1
+  mol addfile $dcd_in first 0 last -1 step $interval waitfor -1
 
   ##### alignment
   set ref_molid [molinfo top get id]
@@ -98,8 +100,11 @@ foreach dcd_in $dcd_list {
   }
   #end loop over frames
   animate delete all
+
+  flush $ofile
+  close $ofile
+  incr TRJNUM
 }
-#end dtr list
-flush $ofile
-close $ofile
+# end loop of trajectories
+
 exit
