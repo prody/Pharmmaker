@@ -78,12 +78,10 @@ foreach dcd_in $dcd_list {
     set argNit [atomselect top "resname $PROBE and not hydrogen"]
     $argNit frame $f
     set Nlist [$argNit list]
-    set NNNN 0
     foreach atom1 $Olist {
       foreach atom2 $Nlist {
         set NOdist [measure bond [list [list $atom1] [list $atom2]]]
-        if {$NOdist < $CUTOFF1} {
-          set NNNN [expr $NNNN+1]
+        if { $NOdist < $CUTOFF1 } {
           set aato1 [expr $atom1+1]
           set aato2 [expr $atom2+1]
           set phe1 [atomselect [molinfo top get id] "serial $aato2"]

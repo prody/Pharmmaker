@@ -3,8 +3,6 @@
 # Select snapshots with many of the most dominant interactions from
 # Druggability molecular dynamics simulations
 
-set ofile [open _ligbo-ok.dat w]
-
 set CUTOFF CUTOFF
 set PROBE AAA
 set hotspotNum FF
@@ -30,6 +28,8 @@ if { $frameLast eq "last" } {
   set frameLast [molinfo top get numframes]
 }
 
+set ofile [open _ligbo-ok.dat w]
+
 for {set f $frameFirst} {$f < $frameLast} {incr f} {
 	molinfo top set frame $f
 
@@ -40,12 +40,10 @@ for {set f $frameFirst} {$f < $frameLast} {incr f} {
   set argNit [atomselect top "resname $PROBE and chain M and resid $hotspotNum"]
   $argNit frame $f
   set Nlist [$argNit list]
-  set NNNN 0
 	foreach atom1 $Olist {
 		foreach atom2 $Nlist {
 			set NOdist [measure bond [list [list $atom1] [list $atom2]]]
       if { $NOdist < $CUTOFF } {
-        set NNNN [expr $NNNN+1]
         set aato1 [expr $atom1+1]
         set aato2 [expr $atom2+1]
         set phe1 [atomselect [molinfo top get id] "serial $aato2"]
@@ -65,7 +63,8 @@ for {set f $frameFirst} {$f < $frameLast} {incr f} {
 }
 #end loop over frames
 animate delete all
-#end dtr list
+
 flush $ofile
 close $ofile
+
 exit

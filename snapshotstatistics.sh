@@ -290,6 +290,7 @@ do
   done
 
   wc -l $FOUTDIR/z.*.*/outfr* | grep -v "total" | sort -r -n -k1 > $FOUTDIR/zlist-count
+  awk '{ print $1/"'"$frameLast"'" "\t" $2 }' snapshot/dg_site_1/zlist-count > $FOUTDIR/zlist-frequency
 
   rm __*
 
