@@ -4,31 +4,33 @@
 # Druggability molecular dynamics simulations
 
 set ofile [open _ligbo-ok.dat w]
-# Check cms
-set input    ./v-com-ok.pdb
 
-set interval SSTEP 
 set CUTOFF CUTOFF
 set PROBE AAA
 set hotspotNum FF
+set frameFirst first
+set frameLast last
 
 # Take parameter values from input arguments as far as possible
 for {set index 0} {$index < $argc -1} {incr index} {
-  if {$index eq  0} {set interval [lindex $argv $index]}
-  if {$index eq  1} {set CUTOFF [lindex $argv $index]}
-  if {$index eq  2} {set PROBE [lindex $argv $index]}
-  if {$index eq  3} {set hotspotNum [lindex $argv $index]}
+  if {$index eq  0} {set CUTOFF [lindex $argv $index]}
+  if {$index eq  1} {set PROBE [lindex $argv $index]}
+  if {$index eq  2} {set hotspotNum [lindex $argv $index]}
+  if {$index eq  3} {set frameFirst [lindex $argv $index]}
+  if {$index eq  4} {set frameLast [lindex $argv $index]}
 }
 
-set count 0
-animate read pdb $input beg 0 end -1 skip $interval waitfor all
+animate read pdb ./v-com-ok.pdb beg 0 end -1 skip 1 waitfor all
 
-set first_frame 0
-set num_frames [molinfo top get numframes] 
+if { $frameFirst eq "first" } {
+  set frameFirst 0
+}
+  
+if { $frameLast eq "last" } {
+  set frameLast [molinfo top get numframes]
+}
 
-for {set f $first_frame} {$f < $num_frames} {incr f} {
-	incr count
-	set time [expr ($count-1)*$interval]
+for {set f $frameFirst} {$f < $frameLast} {incr f} {
 	molinfo top set frame $f
 
   set gluOxy [atomselect top "resname $PROBE and chain P and not hydrogen"]
@@ -42,7 +44,7 @@ for {set f $first_frame} {$f < $num_frames} {incr f} {
 	foreach atom1 $Olist {
 		foreach atom2 $Nlist {
 			set NOdist [measure bond [list [list $atom1] [list $atom2]]]
-      if {$NOdist < $CUTOFF } {
+      if { $NOdist < $CUTOFF } {
         set NNNN [expr $NNNN+1]
         set aato1 [expr $atom1+1]
         set aato2 [expr $atom2+1]

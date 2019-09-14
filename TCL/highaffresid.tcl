@@ -11,16 +11,16 @@ namespace eval ::highAff:: {
   namespace export highAff
 
   ############ Default parameter values (change or provide) #################
-  #  0. PDB file name and path
-  variable struc  ../md/sim.pdb     
-  #  1. DCD file name and path
-  variable dcd_in ../md/sim.dcd
-  #  2. protein chain ID in pdb
+  #  0. binding value cutoff for assigning high affinity residues
+  variable bv_cutoff
+  #  1. PDB file name and path
+  variable struc    
+  #  2. DCD file name and path
+  variable dcd_in
+  #  3. protein chain ID in pdb
   variable CHAIN all
-  #  3. Probe molecule ID in pdb
+  #  4. Probe molecule ID in pdb
   variable PROBE all
-  #  4. binding value cutoff for assigning high affinity residues
-  variable bv_cutoff 500
   #  5. first residue number of protein for analysis
   variable RESIDFIRST first
   #  6. last residue number of protein for analysis
@@ -48,11 +48,11 @@ namespace eval ::highAff:: {
 
 # Take parameter values from input arguments as far as possible
 for {set index 0} {$index < $argc -1} {incr index} {
-  if {$index eq  0} {set ::highAff::struc [split [lindex $argv $index] ,]}
-  if {$index eq  1} {set ::highAff::dcd_in [split [lindex $argv $index] ,]}
-  if {$index eq  2} {set ::highAff::CHAIN [split [lindex $argv $index] ,]}
-  if {$index eq  3} {set ::highAff::PROBE [split [lindex $argv $index] ,]}
-  if {$index eq  4} {set ::highAff::bv_cutoff [split [lindex $argv $index] ,]}
+  if {$index eq  0} {set ::highAff::bv_cutoff [lindex $argv $index]}
+  if {$index eq  1} {set ::highAff::struc [split [lindex $argv $index] ,]}
+  if {$index eq  2} {set ::highAff::dcd_in [split [lindex $argv $index] ,]}
+  if {$index eq  3} {set ::highAff::CHAIN [split [lindex $argv $index] ,]}
+  if {$index eq  4} {set ::highAff::PROBE [split [lindex $argv $index] ,]}
   if {$index eq  5} {set ::highAff::RESIDFIRST [split [lindex $argv $index] ,]}
   if {$index eq  6} {set ::highAff::RESIDLAST [split [lindex $argv $index] ,]}
   if {$index eq  7} {set ::highAff::frameFIRST [split [lindex $argv $index] ,]}
@@ -63,18 +63,20 @@ for {set index 0} {$index < $argc -1} {incr index} {
 
 if {$index eq 6} {set ::highAff::RESIDLAST $::highAff::RESIDFIRST}
 
-set refiners {}
-foreach refiner $::highAff::region_refiner {
-  if {[catch { 
-    set pdbfiles [glob -directory $refiner *site_?_soln_?.pdb]
-    foreach pdbfile $pdbfiles {
-      lappend refiners $pdbfile
+if { [info exists ::highAff::region_refiner ] == 1 } {
+  set refiners {}
+  foreach refiner $::highAff::region_refiner {
+    if {[catch { 
+      set pdbfiles [glob -directory $refiner *site_?_soln_?.pdb]
+      foreach pdbfile $pdbfiles {
+        lappend refiners $pdbfile
+      }
+    } errvar ]} {
+      lappend refiners $refiner
     }
-  } errvar ]} {
-    lappend refiners $refiner
   }
+  set ::highAff::region_refiner $refiners
 }
-set ::highAff::region_refiner $refiners
 
 if { $argc < 12 } {
   # 1st argument counted is the command itself
@@ -90,22 +92,25 @@ if { $argc eq 2 && [lindex $argv 0] eq "help" } {
   puts ""
   puts "The arguments are the following in a fixed order:"
   puts ""
+  puts "bv_cutoff: the binding value cutoff for assigning high affinity residues"
+  puts "A value for this argument is essential. 0 means don't distinguish high affinity residues."
+  puts "Any other value triggers this step."
+  puts ""
   puts "struc: path to PDB file(s) for the starting structure of druggability simulation(s)"
   puts "you can provide either one path alone or one path per DCD file"
-  puts "default value: ../md/sim.pdb"
+  puts "This variable must be set to calculate binding values"
+  puts "If not set, binding values are read from files instead."
   puts ""
   puts "dcd_in: path to DCD file(s) for druggability simulation(s)"
   puts "any number of DCD files can be provided as long as you meet the rule above about PDB files"
-  puts "default value: ../md/sim.dcd"
+  puts "This variable must be set to calculate binding values"
+  puts "If not set, binding values are read from files instead."
   puts ""
   puts "CHAIN: the chains to analyze"
   puts "by default, all chains are analyzed"
   puts ""
   puts "PROBE: the probes to analyze"
   puts "by default, all probes are analyzed"
-  puts ""
-  puts "bv_cutoff: the binding value cutoff for assigning high affinity residues"
-  puts "default value is 500"
   puts ""
   puts "RESIDFIRST: the first residue to include in the analysis for each chain"
   puts "by default, the first residue in each chain is taken"
@@ -134,14 +139,11 @@ if { $argc eq 2 && [lindex $argv 0] eq "help" } {
   exit
 }
 
-proc findHighAffResids { sites strucs dcd_list CHAINS PROBES RESIDFIRST RESIDLAST cutoff frameFIRST frameLAST } {
+proc calcBindingValues { sites strucs dcd_list CHAINS PROBES RESIDFIRST RESIDLAST cutoff frameFIRST frameLAST } {
 
-  set bestSite 0
-  set bestScore 0
   set siteNum 0
   # start loop for sites
   foreach site $sites {
-    set siteScore 0
 
     puts ""
     puts "starting loop for site $site"
@@ -211,6 +213,11 @@ proc findHighAffResids { sites strucs dcd_list CHAINS PROBES RESIDFIRST RESIDLAS
       flush $regionFile2
       close $regionFile2
 
+      set sfile [open ../site-list.dat a]
+      puts $sfile highaffresid/$site_string
+      flush $sfile
+      close $sfile
+
       if { [llength $::highAff::resids] eq 0 } {
         incr chainNum
         # continue on to next chain
@@ -243,7 +250,7 @@ proc findHighAffResids { sites strucs dcd_list CHAINS PROBES RESIDFIRST RESIDLAS
 
         mol load pdb $struc
         incr ::highAff::mol_ID
-        mol addfile $dcd_in type dcd first 0 last -1 step 1 waitfor -1
+        mol addfile $dcd_in first 0 last -1 step 1 waitfor -1
 
         set first_frame [lindex $::highAff::frameRange 0]
         set num_frames [llength $::highAff::frameRange]
@@ -262,7 +269,6 @@ proc findHighAffResids { sites strucs dcd_list CHAINS PROBES RESIDFIRST RESIDLAS
           foreach PROBE $PROBES {
             #puts ""
             #puts "starting loop for probe $PROBE"
-            set highaffresids {}
 
             set argNit [atomselect top "resname $PROBE and not hydrogen"]
             $argNit frame $f
@@ -333,32 +339,6 @@ proc findHighAffResids { sites strucs dcd_list CHAINS PROBES RESIDFIRST RESIDLAS
               close $pfile
             }
 
-            if { $f eq [expr $num_frames - 1]} {
-
-              set siteList1 [split $site "/"]
-              set siteString1 [lindex $siteList1 end]
-              set siteList2 [split $siteString1 "."]
-              set site_string [lindex $siteList2 0]
-
-              if {[llength $highaffresids] > 0} {
-                set ofile2  [open highaffresid.dat a]
-                puts $ofile2 "$site $PROBE $CHAIN $highaffresids"
-                flush $ofile2
-                close $ofile2
-              }
-
-              set ofile2  [open $site_string/$CHAIN-$PROBE-highaffresid.dat a]
-              puts $ofile2 "$highaffresids"
-              flush $ofile2
-              close $ofile2
-
-              if {[llength $highaffresids] > 0} {
-                set ofile2  [open $site_string/highaffresid.dat a]
-                puts $ofile2 "$PROBE $CHAIN $highaffresids"
-                flush $ofile2
-                close $ofile2
-              }
-            }
           }
           # end loop for probes
 
@@ -381,34 +361,117 @@ proc findHighAffResids { sites strucs dcd_list CHAINS PROBES RESIDFIRST RESIDLAS
     }
     # end loop for chains
 
-    set sfile [open site-scores.dat a]
-    puts $sfile "[format {%0.2f} $siteScore] $site"
-    flush $sfile
-    close $sfile
-
-    if { $siteScore > $bestScore } {
-      set bestScore $siteScore
-      set bestSite $site
-    }
-
     incr siteNum
   }
   # end loop for sites
-
-  puts ""
-  puts "The best site is $bestSite"
-  puts ""
-
-  set siteList1 [split $bestSite "/"]
-  set siteString1 [lindex $siteList1 end]
-  set siteList2 [split $siteString1 "."]
-  set site_string [lindex $siteList2 0]
-
-  # Make symbolic links for directory and original PDB for best site
-  exec ln -s $site_string best-site
 }
 # end proc
 
+######################################################################
+
+proc cutoffHighAffinityResidues { cutoff } {
+
+  if { [ file exists ../site-list.dat ] } {
+    set sfile [open ../site-list.dat r]
+    set file_data [read $sfile]
+    close $sfile
+    set sites [lrange [split $file_data "\n"] 0 end-1]
+    set bestSite ""
+    set bestScore 0
+  } else {
+    set sites {"."}
+  }
+
+  set cfile [open ../chain-list.dat r]
+  set file_data [read $cfile]
+  close $cfile
+  set CHAINS [lrange [split $file_data "\n"] 0 end-1]
+
+  set pfile [open ../probe-list.dat r]
+  set file_data [read $pfile]
+  close $pfile
+  set PROBES [lrange [split $file_data "\n"] 0 end-1]
+
+  foreach site $sites {
+    set siteScore 0
+
+    foreach CHAIN $CHAINS {
+
+      foreach PROBE $PROBES {
+
+        set highaffresids {}
+
+        if { $site ne "." } {
+          set siteList1 [split $site "/"]
+          set siteString1 [lindex $siteList1 end]
+          set siteList2 [split $siteString1 "."]
+          set site_string [lindex $siteList2 0]
+        } else {
+          set site_string "."
+        }
+
+        set fp [open $site_string/$CHAIN-$PROBE.dat r]
+        set file_data [read $fp]
+        close $fp
+        set lines [split $file_data "\n"]
+
+        foreach line $lines {
+          set fields [split $line " "]
+          set rrr [lindex $fields 0]
+          set DISTSUM [lindex $fields end]
+
+          if { $DISTSUM > $cutoff } {
+            lappend highaffresids $rrr
+            set siteScore [ expr $siteScore + $DISTSUM ]
+          }
+
+        }
+        # end loop for lines
+
+        set ofile2  [open $site_string/$CHAIN-$PROBE-highaffresid.dat a]
+        puts $ofile2 "$highaffresids"
+        flush $ofile2
+        close $ofile2
+
+        set ofile2  [open $site_string/highaffresid.dat a]
+        puts $ofile2 "$CHAIN $PROBE $highaffresids"
+        flush $ofile2
+        close $ofile2
+      }
+      # end loop for probes
+    }
+    # end loop for chains
+
+    if { $site ne "." } {
+      set sfile [open site-scores.dat a]
+      puts $sfile "[format {%0.2f} $siteScore] $site"
+      flush $sfile
+      close $sfile
+
+      if { $siteScore > $bestScore } {
+        set bestScore $siteScore
+        set bestSite $site
+      }
+    }
+  }
+  # end loop for sites
+
+  if { $site ne "." } {
+    puts ""
+    puts "The best site is $bestSite"
+    puts ""
+
+    set siteList1 [split $bestSite "/"]
+    set siteString1 [lindex $siteList1 end]
+    set siteList2 [split $siteString1 "."]
+    set site_string [lindex $siteList2 end]
+
+    exec ln -s $site_string best-site
+  }
+}
+# end proc
+
+#######################################################################
 
 proc findChainIDs { struc } {
   mol load pdb $struc
@@ -466,7 +529,7 @@ proc findResidRange { struc chains } {
 proc findFrameRange { struc dcd_in } {
   mol load pdb $struc
   incr ::highAff::mol_ID
-  mol addfile $dcd_in type dcd first 0 last -1 step 1 waitfor -1
+  mol addfile $dcd_in first 0 last -1 step 1 waitfor -1
 
   if { $::highAff::frameFIRST eq "first" } {
     set ::highAff::frameFIRST 1
@@ -535,65 +598,67 @@ proc refineResidRange { resid_range chain refiner } {
   }
 }
 
-set ::highAff::mol_ID -1
-# This means that we get to mol ID 0 when we increment it the first time
-
-if { $::highAff::CHAIN eq "all" } {
-  findChainIDs $::highAff::struc
-}
-
-if { $::highAff::PROBE eq "all" } {
-  findProbeTypes $::highAff::struc
-}
-
-if { $::highAff::RESIDFIRST eq "first" || $::highAff::RESIDLAST eq "last" } {
-  findResidRange $::highAff::struc $::highAff::CHAIN
-}
-
-if { $::highAff::frameFIRST eq "first" || $::highAff::frameLAST eq "last" } {
-  findFrameRange $::highAff::struc $::highAff::dcd_in
-}
-
-set numChains [llength $::highAff::CHAIN]
-
-if { [llength $::highAff::RESIDFIRST] eq 1 && $numChains > 1} {
-  for {set index 1} {$index < $numChains} {incr index} {
-    lappend ::highAff::RESIDFIRST [lindex $::highAff::RESIDFIRST 0]
-  }
-}
-
-if { [llength $::highAff::RESIDLAST] eq 1 && $numChains > 1} {
-  for {set index 1} {$index < $numChains} {incr index} {
-    lappend ::highAff::RESIDLAST [lindex $::highAff::RESIDLAST 0]
-  }
-}
-
-#puts $::highAff::struc
-#puts $::highAff::dcd_in
-#puts $::highAff::CHAIN
-#puts $::highAff::PROBE
-#puts $::highAff::RESIDFIRST
-#puts $::highAff::RESIDLAST
-
-# set variables for testing
-######################################
-#set strucs $::highAff::struc
-#set dcd_list $::highAff::dcd_in
-#set CHAINS $::highAff::CHAIN
-#set PROBES $::highAff::PROBE
-#set RESIDFIRST $::highAff::RESIDFIRST
-#set RESIDLAST $::highAff::RESIDLAST
-#set cutoff $::highAff::bv_cutoff
-#set chainNum 0
-#set CHAIN [lindex $CHAINS 0]
-######################################
+#######################################################################
 
 if {[catch { 
-  findHighAffResids $::highAff::region_refiner $::highAff::struc $::highAff::dcd_in $::highAff::CHAIN $::highAff::PROBE $::highAff::RESIDFIRST $::highAff::RESIDLAST $::highAff::bv_cutoff $::highAff::frameFIRST $::highAff::frameLAST
+
+  if { $::highAff::bv_cutoff == 0} {
+
+    if { [info exists ::highAff::struc] == 0 } {
+      puts "Please provide a starting structure file for the simulation"
+    } elseif { [info exists ::highAff::dcd_in] == 0 } {
+      puts "Please provide a trajectory file for the simulation"
+    } else {
+
+      set ::highAff::mol_ID -1
+      # This means that we get to mol ID 0 when we increment it the first time
+
+      if { $::highAff::CHAIN eq "all" } {
+        findChainIDs $::highAff::struc
+      }
+
+      if { $::highAff::PROBE eq "all" } {
+        findProbeTypes $::highAff::struc
+      }
+
+      if { $::highAff::RESIDFIRST eq "first" || $::highAff::RESIDLAST eq "last" } {
+        findResidRange $::highAff::struc $::highAff::CHAIN
+      }
+
+      if { $::highAff::frameFIRST eq "first" || $::highAff::frameLAST eq "last" } {
+        findFrameRange $::highAff::struc $::highAff::dcd_in
+      }
+
+      set numChains [llength $::highAff::CHAIN]
+
+      if { [llength $::highAff::RESIDFIRST] eq 1 && $numChains > 1} {
+        for {set index 1} {$index < $numChains} {incr index} {
+          lappend ::highAff::RESIDFIRST [lindex $::highAff::RESIDFIRST 0]
+        }
+      }
+
+      if { [llength $::highAff::RESIDLAST] eq 1 && $numChains > 1} {
+        for {set index 1} {$index < $numChains} {incr index} {
+          lappend ::highAff::RESIDLAST [lindex $::highAff::RESIDLAST 0]
+        }
+      }
+
+      calcBindingValues $::highAff::region_refiner $::highAff::struc $::highAff::dcd_in $::highAff::CHAIN $::highAff::PROBE $::highAff::RESIDFIRST $::highAff::RESIDLAST $::highAff::bv_cutoff $::highAff::frameFIRST $::highAff::frameLAST
+
+    }
+    # end if for checking that we have starting structure and trajectory files
+
+  } else {
+
+    cutoffHighAffinityResidues $::highAff::bv_cutoff
+
+  }
+  # end if for checking whether the binding value cutoff is 0 for not
+  
 } errvar ]} {
   puts $errvar
 } else {
-  puts "High affinity residue analysis completed successfully"
+  puts "High affinity residue program completed successfully"
 }
 puts ""
 exit

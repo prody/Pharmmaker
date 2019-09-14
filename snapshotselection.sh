@@ -4,85 +4,69 @@
 # Druggability molecular dynamics simulations
 
 ######### Check here  #######
+CUTOFF3=''
+# input directory
+INDIR='site-list2.dat'
 # PDB file name and path
 PDB='struc-list.dat'
-# DCD file name and path RRR is variable
+# DCD file name and path
 DCD='traj-list.dat'
-# DCD trajectory number for RRR
-TRJNUM=' 1 '
-# frame number for each dcd         
-FRANUM=10000
-# protein chain ID in pdb
-#CHAIN='chain-list.dat'
-# probe molecule ID in pdb
-#PROBE='probe-list.dat' 
-# cutoff between residue and probe      
-#CUTOFF=4.0
-# cutoff between probe and hot spot
-#CUTOFF2=1.5
-# frequency of dcd for analysis
-STEP=1
-# output directory             
-OUTDIR=' s1 '
-# cutoff of score for collecting snapshots
-CUTOFF3=1000
+# first frame number for each dcd 
+frameFirst='first'
+# last frame number for each dcd        
+frameLast='last'
 ######### Check here  #######
+
+if [[ $# -lt 1 ]]; then
+  echo "Please provide a frequency score cutoff"
+  echo ""
+  exit
+fi
 
 for arg in `seq 1 "$#"`; do
   if [[ "$arg" -eq 1 ]]; then
-    PDB=$1
+    CUTOFF3=$1
   elif [[ "$arg" -eq 2 ]]; then
-    DCD=$2
-  #elif [[ "$arg" -eq 3 ]]; then
-  #  TRJNUM=$3
-  #elif [[ "$arg" -eq 4 ]]; then
-  #  FRANUM=$4
+    INDIR=$2
   elif [[ "$arg" -eq 3 ]]; then
-    CHAIN=$4
+    PDB=$3
   elif [[ "$arg" -eq 4 ]]; then
-    PROBE=$4
-  #elif [[ "$arg" -eq 7 ]]; then
-  #  CUTOFF=$7
-  #elif [[ "$arg" -eq 8 ]]; then
-  #  CUTOFF2=$8
+    DCD=$4
   elif [[ "$arg" -eq 5 ]]; then
-    STEP=$5
+    CHAIN=$5
   elif [[ "$arg" -eq 6 ]]; then
-    OUTDIR=$6
+    PROBE=$6
   elif [[ "$arg" -eq 7 ]]; then
-    CUTOFF3=$7
+    frameFirst=$7
+  elif [[ "$arg" -eq 8 ]]; then
+    frameLast=$8
   fi
 done
 
 if [[ $1 = "help" ]]; then
-  echo "This script takes up to 7 arguments in the following order"
+  echo "This script takes up to 8 arguments in the following order"
+  echo ""
+  echo "cutoff of frequency score for collecting snapshots, "
+  echo ""
+  echo "input directory for results from site selection step "
+  echo "This is used to locate the results from the snapshot statistics step"
   echo ""
   echo "protein PDB file path, "
   echo ""
   echo "protein DCD file path, "
   echo ""
-  #echo "trajectory numbers for multiple runs, "
-  #echo ""
-  #echo "number of frames to use, "
-  #echo ""
-  #echo "chain ID, "
-  #echo ""
-  #echo "probe type, "
-  #echo ""
-  #echo "cutoff between residue and probe, "
-  #echo ""
-  #echo "cutoff between probe and hot spot, "
-  #echo ""
-  echo "step for reading the trajectories, "
+  echo "chain ID, "
   echo ""
-  echo "output directory for results, "
+  echo "probe type, "
   echo ""
-  echo "cutoff of score for collecting snapshots, "
+  echo "first frame to use, "
+  echo ""
+  echo "last frame to use, "
   echo ""
   exit
 fi
 
-# Set DCD, PDB, CHAIN and PROBE
+# Set DCD, PDB, INDIR, CHAIN and PROBE
 if [[ DCD != "*dcd" ]]; then
   DCD=`cat $DCD` || DCD=$DCD
 fi
@@ -91,94 +75,109 @@ if [[ PDB != "*pdb" ]]; then
   PDB=`cat $PDB` || DCD=$DCD
 fi
 
-for FOUTDIR in $OUTDIR
-do
-
-#########
-cat > _molexe  <<EOF
-awk '{if (\$1 >= $CUTOFF3) print }' snapshot-$FOUTDIR/zlist-count  > ___test 
-EOF
-chmod 777 _molexe
-./_molexe
-rm _molexe
-
-mkdir CUT$CUTOFF3
-
-TNUM=`wc -l ___test | awk '{print $1}'`
-for (( mm = 1 ; mm <= $TNUM  ; mm++ ))
-do
-sed -n -e "$mm,$mm p" ___test > ___test2
-sed -e "s/outfr.dat/  /g" ___test2 > ___test3
-
-FF=`cat ___test3 | awk '{print $2}'`
-cp -r $FF CUT$CUTOFF3
-done
-
-rm ___t*
-############
-
-######### zlist-frame-c1000 zlist-frame-c1000-detail
-for KK in $TRJNUM
-do
-for (( nn = 0   ; nn <= $FRANUM   ; nn++ ))
-do
-
-grep "SIM# $KK FRAME# $nn "  CUT$CUTOFF3/z.*/outfr.dat > ___test
-
-CRAT=`wc -l ___test | awk '{print $1}'`
-
-if [ $CRAT -eq $TNUM ]; then
-cat   ___test >> ___test2
-echo "SIM# $KK FRAME# $nn   $CRAT"  >> ___test3
+if [[ -f $INDIR ]]; then
+  INDIR=`cat $INDIR`
 fi
 
+IFS=','
+INDIRS=()
+for indir in $INDIR; do
+  INDIRS+=($indir)
 done
-done
+INDIR=${INDIRS[@]}
+IFS=$' \t\n'
 
-cp ___test2    snapshot-$FOUTDIR/zlist-frame-c$CUTOFF3-detail
-cp ___test3    snapshot-$FOUTDIR/zlist-frame-c$CUTOFF3
-
-rm  __*
-\rm -r CUT$CUTOFF3
-######### zlist-frame-c1000 zlist-frame-c1000-detail
-
-
-# Extract protein and ligand ##
-
-SNAPSNUM=`wc -l snapshot-$FOUTDIR/zlist-frame-c$CUTOFF3 | awk '{print $1}'`
-
-for (( yy = 1 ; yy <= $SNAPSNUM  ; yy++ ))
+for FINDIR in $INDIR
 do
 
-sed -n -e "$yy,$yy p" snapshot-$FOUTDIR/zlist-frame-c$CUTOFF3  > _____tt
-FF=`cat _____tt | awk '{print $2}'`
-FFRAM=`cat _____tt | awk '{print $4}'`
-grep "$FF FRAME# $FFRAM" snapshot-$FOUTDIR/zlist-frame-c$CUTOFF3-detail > _____tt2
+  FOUTDIR="snapshot/`echo $FINDIR | awk -F/ '{print $NF}'`"
 
-TTTTNUM=`wc -l _____tt2 | awk '{print $1}'`
+  #########
+  awk -v cutoff=$CUTOFF3 '{if ($1 >= cutoff ) print }' $FOUTDIR/zlist-count > ___test 
 
-if [ $TTTTNUM -ge 1 ]; then
-for (( bb = 1 ; bb <= $TTTTNUM  ; bb++ ))
-do
-sed -n -e  "$bb,$bb p" _____tt2 > _____tt3
+  mkdir CUT$CUTOFF3
 
-PPROB=`cat _____tt3 | awk '{print $6}'`
-PPRON=`cat _____tt3 | awk '{print $8}'`
-env VMDARGS='text with blanks' vmd -dispdev text -e $PHARMMAKER_HOME/snapshot3.tcl -args $PDB $DCD $STEP $FFRAM $PPROB $PPRON $FF
+  TNUM=`wc -l ___test | awk '{print $1}'`
+  for (( mm = 1 ; mm <= $TNUM  ; mm++ ))
+  do
+    FF=`sed -n -e "$mm,$mm p" ___test | sed -e "s/outfr.dat/  /g" | awk '{print $2}'`
+    cp -r $FF CUT$CUTOFF3
+  done
 
-mkdir snapshot-$FOUTDIR/zpdb-frame-c$CUTOFF3
-mv  pro*.pdb snapshot-$FOUTDIR/zpdb-frame-c$CUTOFF3
-mv  lig*.pdb snapshot-$FOUTDIR/zpdb-frame-c$CUTOFF3
+  rm ___t*
+  ############
+
+  ######### zlist-frame-c1000 zlist-frame-c1000-detail
+  if [[ "$frameFirst" -eq "first" ]]; then
+    frameFirst=0
+  fi
+
+  if [[ "$frameLast" -eq "last" ]]; then
+    frameLast=`tail -n1 $FOUTDIR/*/out-?.dat | sort -n -k4 | tail -n1 | awk '{ print $NF }'`
+  fi
+
+  KK=1
+  for traj in $DCD
+  do
+    for (( nn = $frameFirst ; nn <= $frameLast   ; nn++ ))
+    do
+
+      grep "SIM# $KK FRAME# $nn "  CUT$CUTOFF3/z.*/outfr.dat > ___test
+
+      CRAT=`wc -l ___test | awk '{print $1}'`
+
+      if [ $CRAT -eq $TNUM ]; then
+        cat   ___test >> $FOUTDIR/zlist-frame-c$CUTOFF3-detail
+        echo "SIM# $KK FRAME# $nn   $CRAT"  >> $FOUTDIR/zlist-frame-c$CUTOFF3
+      fi
+
+    done
+    ((KK++))
+  done
+
+  rm  __*
+  \rm -r CUT$CUTOFF3
+  ######### zlist-frame-c1000 zlist-frame-c1000-detail
+
+
+  # Extract protein and ligand ##
+
+  SNAPSNUM=`wc -l $FOUTDIR/zlist-frame-c$CUTOFF3 | awk '{print $1}'`
+
+  for (( yy = 1 ; yy <= $SNAPSNUM  ; yy++ ))
+  do
+
+    sed -n -e "$yy,$yy p" $FOUTDIR/zlist-frame-c$CUTOFF3  > _____tt
+    FF=`cat _____tt | awk '{print $2}'`
+    FFRAM=`cat _____tt | awk '{print $4}'`
+    grep "$FF FRAME# $FFRAM" $FOUTDIR/zlist-frame-c$CUTOFF3-detail > _____tt2
+
+    TTTTNUM=`wc -l _____tt2 | awk '{print $1}'`
+
+    if [ $TTTTNUM -ge 1 ]; then
+      for (( bb = 1 ; bb <= $TTTTNUM  ; bb++ ))
+      do
+        sed -n -e  "$bb,$bb p" _____tt2 > _____tt3
+
+        PPROB=`cat _____tt3 | awk '{print $6}'`
+        PPRON=`cat _____tt3 | awk '{print $8}'`
+        env VMDARGS='text with blanks' vmd -dispdev text -e $PHARMMAKER_HOME/snapshot3.tcl -args $PDB $DCD $FFRAM $PPROB $PPRON $FF
+
+        mkdir -p $FOUTDIR/zpdb-frame-c$CUTOFF3
+        mv  pro*.pdb $FOUTDIR/zpdb-frame-c$CUTOFF3
+        mv  lig*.pdb $FOUTDIR/zpdb-frame-c$CUTOFF3
+
+      done
+    fi
+
+    cat $FOUTDIR/zpdb-frame-c$CUTOFF3/lig-$FF-$FFRAM-*.pdb > ____xx
+    grep -v 'END'    ____xx   > ____xx2
+    grep -v 'CRYST1' ____xx2  > $FOUTDIR/zpdb-frame-c$CUTOFF3/lig-$FF-$FFRAM.pdb
+    rm $FOUTDIR/zpdb-frame-c$CUTOFF3/lig-$FF-$FFRAM-*.pdb 
+
+  done
+  rm -r __*
+  # Extract protein and ligand ##
 
 done
-fi
-
-cat snapshot-$FOUTDIR/zpdb-frame-c$CUTOFF3/lig-$FF-$FFRAM-*.pdb > ____xx
-grep -v 'END'    ____xx   > ____xx2
-grep -v 'CRYST1' ____xx2  > snapshot-$FOUTDIR/zpdb-frame-c$CUTOFF3/lig-$FF-$FFRAM.pdb
-
-done
-rm -r __*
-# Extract protein and ligand ##
-
-done
+exit
