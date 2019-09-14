@@ -106,7 +106,7 @@ do
     frameLast=`tail -n1 $resdir/out-?.dat | sort -n -k4 | tail -n1 | awk '{ print $NF }'`
   fi
 
-  KK=0
+  KK=1
   for traj in $DCD
   do
     for (( nn = $frameFirst ; nn <= $frameLast   ; nn++ ))

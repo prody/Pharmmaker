@@ -36,19 +36,19 @@ for arg in `seq 1 "$#"`; do
     PDB=$4
   elif [[ "$arg" -eq 5 ]]; then
     DCD=$5
+  elif [[ "$arg" -eq 6 ]]; then
+    CHAIN=$6
   elif [[ "$arg" -eq 7 ]]; then
-    CHAIN=$7
+    PROBE=$7
   elif [[ "$arg" -eq 8 ]]; then
-    PROBE=$8
+    frameFirst=$8
   elif [[ "$arg" -eq 9 ]]; then
-    frameFirst=$9
-  elif [[ "$arg" -eq 10 ]]; then
-    frameLast=${10}
+    frameLast=$9
   fi
 done
 
 if [[ $1 = "help" ]]; then
-  echo "This script takes up to 10 arguments in the following order"
+  echo "This script takes up to 9 arguments in the following order"
   echo ""
   echo "input directory for results from site selection step"
   echo "The last part of this is used as a suffix for creating a new directory"
@@ -83,9 +83,39 @@ if [[ PDB != "*pdb" ]]; then
 fi
 PDB=`echo $PDB | sed 's/ /,/'`
 
-CHAIN=`cat $CHAIN` || CHAIN=$CHAIN
+if [[ -f $CHAIN ]]; then
+  CHAIN=`cat $CHAIN` 
+else
+  IFS=','
+  for chain in $CHAIN; do
+    chains+=($chain)
+  done
+  CHAIN=${chains[@]}
+fi
+IFS=$' \t\n'
 
-PROBE=`cat $PROBE` || PROBE=$PROBE
+echo "CHAIN is set to contain"
+for CC in $CHAIN; do
+  echo $CC
+done
+echo ""
+
+if [[ -f $PROBE ]]; then
+  PROBE=`cat $PROBE` 
+else
+  IFS=','
+  for probe in $PROBE; do
+    probes+=($probe)
+  done
+  PROBE=${probes[@]}
+fi
+IFS=$' \t\n'
+
+echo "PROBE is set to contain"
+for probe in $PROBE; do
+  echo $probe
+done
+echo ""
 
 if [[ -f $INDIR ]]; then
   INDIR=`cat $INDIR`
@@ -122,7 +152,7 @@ do
 
       mkdir __run
       cd __run
-      env VMDARGS='text with blanks' vmd -dispdev text -e $PHARMMAKER_HOME/snapshot1.tcl -args ../$PDB ../$DCD $CUTOFF $FPROBE $EE $FCHAIN
+      env VMDARGS='text with blanks' vmd -dispdev text -e $PHARMMAKER_HOME/snapshot1.tcl -args ../$PDB ../$DCD $CUTOFF $FPROBE $EE $FCHAIN $frameFirst $frameLast
       cd ..
 
       mv  __run/ligbo*  $resdir/
@@ -143,13 +173,11 @@ do
       do
         sed -n -e "$mm,$mm p" __test1 > __test2
 
-        awk '{printf("%-6s%5s  %-3s %4s%1s%4d %11.3f%8.3f%8.3f%6.2f%6.2f%13s\n", "ATOM", "'"'$mm'"'", "C2", "'"'$FPROBE'"'", "M", "'"'$mm'"'", $6, $7, $8, $9, $10, "M\\" )}' \
+        awk '{printf("%-6s%5s  %-3s %4s%1s%4d %11.3f%8.3f%8.3f%6.2f%6.2f%13s\n", "ATOM", "'"$mm"'", "C2", "'"$FPROBE"'", "M", "'"$mm"'", $6, $7, $8, $9, $10, $11"\\" )}' \
         __test2 >> __test3
-        awk '{printf("%-6s%5s  %-3s %4s%1s%4d %11.3f%8.3f%8.3f%6.2f%6.2f%13s\n", "ATOM", "'"'$mm'"'", "C2", "'"'$FPROBE'"'", "M", "'"'$mm'"'", $6, $7, $8, $9, $10, "M" )}' \
-        __test2 >> __ttest3
+        awk '{printf("%-6s%5s  %-3s %4s%1s%4d %11.3f%8.3f%8.3f%6.2f%6.2f%13s\n", "ATOM", "'"$mm"'", "C2", "'"$FPROBE"'", "M", "'"$mm"'", $6, $7, $8, $9, $10, $11 )}' \
+        __test2 >> $resdir/hot-spot.pdb
       done
-
-      cp __ttest3 $resdir/hot-spot.pdb
 
       echo "END " >> __test3
       echo "d "   >> __test3
@@ -163,7 +191,7 @@ do
       do
         cd $resdir
 
-        env VMDARGS='text with blanks' vmd -dispdev text -e $PHARMMAKER_HOME/snapshot2.tcl -args $CUTOFF2 $FPROBE $FF
+        env VMDARGS='text with blanks' vmd -dispdev text -e $PHARMMAKER_HOME/snapshot2.tcl -args $CUTOFF2 $FPROBE $FF $frameFirst $frameLast
 
         mv _ligbo-ok.dat ligbo-ok.$FF.dat
 
@@ -172,9 +200,7 @@ do
         for (( rr = 0   ; rr <= $TNNN     ; rr++ ))
         do
 
-          awk '{if ($1 == "'"$rr"'") print }' ligbo-ok.$FF.dat > ___test2
-
-          CRAT=`wc -l ___test2 | awk '{print $1}'`
+          CRAT=`awk '{if ($1 == "'"$rr"'") print }' ligbo-ok.$FF.dat | wc -l | awk '{print $1}'`
 
           if [ $CRAT -ge 1 ]; then
             awk '{if ($2 == "'"$rr"'") print }' zlist  > ___test3
@@ -198,11 +224,13 @@ do
         cd ..
 
         #### Sort
-        KK=0
+        KK=1
         for traj in $DCD; do
-          awk '{if ($2 == "'"$KK"'") print }' $resdir/tout-$FF.dat | sort -n -k4 >> $resdir/out-$FF.dat
-          awk '{if ($1 == "'"$KK"'") print }' $resdir/tout-res-$FF.dat | sort -n -k2 >> $resdir/out-res-$FF.dat
-          awk '{if ($1 == "'"$KK"'") print }' $resdir/tout-hotspot-$FF.dat | sort -n -k2 >> $resdir/out-hotspot-$FF.dat 
+          if [[ -f $resdir/tout-$FF.dat ]]; then
+            awk '{if ($2 == "'"$KK"'") print }' $resdir/tout-$FF.dat | sort -n -k4 >> $resdir/out-$FF.dat
+            awk '{if ($1 == "'"$KK"'") print }' $resdir/tout-res-$FF.dat | sort -n -k2 >> $resdir/out-res-$FF.dat
+            awk '{if ($1 == "'"$KK"'") print }' $resdir/tout-hotspot-$FF.dat | sort -n -k2 >> $resdir/out-hotspot-$FF.dat 
+          fi
           ((KK++))
         done
         #### Sort
@@ -225,7 +253,7 @@ do
         frameLast=`tail -n1 $resdir/out-?.dat | sort -n -k4 | tail -n1 | awk '{ print $NF }'`
       fi
 
-      KK=0
+      KK=1
       for traj in $DCD
       do
         for (( nn = $frameFirst ; nn <= $frameLast   ; nn++ ))
