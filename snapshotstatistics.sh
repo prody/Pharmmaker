@@ -295,6 +295,7 @@ do
       ######### outfr.dat
 
       trajNum=1
+      totalNumFrames=0
       for traj in $DCD
       do
         for (( nn = ${firstFramesArray[$trajNum]} ; nn <= ${lastFramesArray[$trajNum]}   ; nn++ ))
@@ -308,6 +309,7 @@ do
           fi
         done
         ((trajNum++))
+        numFrames=`expr $totalNumFrames + $nn` # We don't subtract 1 because we start at 0
       done
       rm _*
       #########
@@ -321,7 +323,7 @@ do
   done
 
   wc -l $FOUTDIR/z.*.*/outfr* | grep -v "total" | sort -r -n -k1 > $FOUTDIR/zlist-count
-  awk '{ print $1/"'"$frameLast"'" "\t" $2 }' snapshot/dg_site_1/zlist-count > $FOUTDIR/zlist-frequency
+  awk '{ print $1/"'"$totalNumFrames"'" "\t" $2 }' snapshot/dg_site_1/zlist-count > $FOUTDIR/zlist-frequency
 
   rm __*
 
