@@ -245,9 +245,8 @@ for i in `seq 0 $(expr $numHighaffresidDirs - 1)`; do
 
   for hotspotsFile in $hotspotsFileList; do
 
-    suffix=`echo $hotspotsFile | awk -F/ '{ print $NF }' | awk -F. '{ print $1 }'`
-    echo $suffix >> site-list2.dat
-    dir2="highaffresid/$suffix"
+    dir2=`"highaffresid/echo $hotspotsFile | awk -F/ '{ print $NF }' | awk -F. '{ print $1 }'`
+    echo $dir2 >> site-list2.dat
     mkdir -p $dir2
 
     for CC in $CHAIN; do

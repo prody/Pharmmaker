@@ -13,9 +13,9 @@ PDB='struc-list.dat'
 # DCD file name and path
 DCD='traj-list.dat'
 # first frame number for each dcd 
-frameFirst='first'
+frameFirst='first-frame.dat'
 # last frame number for each dcd        
-frameLast='last'
+frameLast='last-frame.dat'
 ######### Check here  #######
 
 if [[ $# -lt 1 ]]; then
@@ -80,6 +80,30 @@ if [[ -f $INDIR ]]; then
   INDIR=`cat $INDIR`
 fi
 
+if [[ -f $frameFirst ]]; then
+  frameFirst=`cat $frameFirst` 
+else
+  IFS=','
+fi
+
+firstFramesArray=()
+for firstFrame in $frameFirst; do
+  firstFramesArray+=($firstFrame)
+done
+IFS=$' \t\n'
+
+if [[ -f $frameLast ]]; then
+  frameLast=`cat $frameLast` 
+else
+  IFS=','
+fi
+
+lastFramesArray=()
+for lastFrame in $frameLast; do
+  lastFramesArray+=($lastFrame)
+done
+IFS=$' \t\n'
+
 IFS=','
 INDIRS=()
 for indir in $INDIR; do
@@ -94,7 +118,7 @@ do
   FOUTDIR="snapshot/`echo $FINDIR | awk -F/ '{print $NF}'`"
 
   #########
-  awk -v cutoff=$CUTOFF3 '{if ($1 >= cutoff ) print }' $FOUTDIR/zlist-count > ___test 
+  awk -v cutoff=$CUTOFF3 '{if ($1 >= cutoff ) print }' $FOUTDIR/zlist-frequency > ___test 
 
   mkdir CUT$CUTOFF3
 
@@ -109,35 +133,25 @@ do
   ############
 
   ######### zlist-frame-c1000 zlist-frame-c1000-detail
-  if [[ "$frameFirst" -eq "first" ]]; then
-    frameFirst=0
-  fi
 
-  if [[ "$frameLast" -eq "last" ]]; then
-    frameLast=`tail -n1 $FOUTDIR/*/out-?.dat | sort -n -k4 | tail -n1 | awk '{ print $NF }'`
-  fi
 
-  if [[ $CUTOFF3 -lt 1 ]]; then 
-    set CUTOFF3 [expr $CUTOFF3 * $frameLast]
-  fi
-
-  KK=1
+  trajNum=1
   for traj in $DCD
   do
-    for (( nn = $frameFirst ; nn <= $frameLast   ; nn++ ))
+    for (( nn = ${firstFramesArray[$trajNum]} ; nn <= ${lastFramesArray[$trajNum]}   ; nn++ ))
     do
 
-      grep "SIM# $KK FRAME# $nn "  CUT$CUTOFF3/z.*/outfr.dat > ___test
+      grep "SIM# $trajNum FRAME# $nn "  CUT$CUTOFF3/z.*/outfr.dat > ___test
 
       CRAT=`wc -l ___test | awk '{print $1}'`
 
       if [ $CRAT -eq $TNUM ]; then
         cat   ___test >> $FOUTDIR/zlist-frame-c$CUTOFF3-detail
-        echo "SIM# $KK FRAME# $nn   $CRAT"  >> $FOUTDIR/zlist-frame-c$CUTOFF3
+        echo "SIM# $trajNum FRAME# $nn   $CRAT"  >> $FOUTDIR/zlist-frame-c$CUTOFF3
       fi
 
     done
-    ((KK++))
+    ((trajNum++))
   done
 
   rm  __*
@@ -153,9 +167,9 @@ do
   do
 
     sed -n -e "$yy,$yy p" $FOUTDIR/zlist-frame-c$CUTOFF3  > _____tt
-    FF=`cat _____tt | awk '{print $2}'`
+    trajNum=`cat _____tt | awk '{print $2}'`
     FFRAM=`cat _____tt | awk '{print $4}'`
-    grep "$FF FRAME# $FFRAM" $FOUTDIR/zlist-frame-c$CUTOFF3-detail > _____tt2
+    grep "$trajNum FRAME# $FFRAM" $FOUTDIR/zlist-frame-c$CUTOFF3-detail > _____tt2
 
     TTTTNUM=`wc -l _____tt2 | awk '{print $1}'`
 
@@ -166,7 +180,7 @@ do
 
         PPROB=`cat _____tt3 | awk '{print $6}'`
         PPRON=`cat _____tt3 | awk '{print $8}'`
-        env VMDARGS='text with blanks' vmd -dispdev text -e $PHARMMAKER_HOME/snapshot3.tcl -args $PDB $DCD $FFRAM $PPROB $PPRON $FF
+        env VMDARGS='text with blanks' vmd -dispdev text -e $PHARMMAKER_HOME/snapshot3.tcl -args $PDB $DCD $FFRAM $PPROB $PPRON $trajNum
 
         mkdir -p $FOUTDIR/zpdb-frame-c$CUTOFF3
         mv  pro*.pdb $FOUTDIR/zpdb-frame-c$CUTOFF3
@@ -175,10 +189,10 @@ do
       done
     fi
 
-    cat $FOUTDIR/zpdb-frame-c$CUTOFF3/lig-$FF-$FFRAM-*.pdb > ____xx
+    cat $FOUTDIR/zpdb-frame-c$CUTOFF3/lig-$trajNum-$FFRAM-*.pdb > ____xx
     grep -v 'END'    ____xx   > ____xx2
-    grep -v 'CRYST1' ____xx2  > $FOUTDIR/zpdb-frame-c$CUTOFF3/lig-$FF-$FFRAM.pdb
-    rm $FOUTDIR/zpdb-frame-c$CUTOFF3/lig-$FF-$FFRAM-*.pdb 
+    grep -v 'CRYST1' ____xx2  > $FOUTDIR/zpdb-frame-c$CUTOFF3/lig-$trajNum-$FFRAM.pdb
+    rm $FOUTDIR/zpdb-frame-c$CUTOFF3/lig-$trajNum-$FFRAM-*.pdb 
 
   done
   rm -r __*

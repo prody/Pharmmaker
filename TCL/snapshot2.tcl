@@ -6,31 +6,21 @@
 set CUTOFF CUTOFF
 set PROBE AAA
 set hotspotNum FF
-set frameFirst first
-set frameLast last
 
 # Take parameter values from input arguments as far as possible
 for {set index 0} {$index < $argc -1} {incr index} {
   if {$index eq  0} {set CUTOFF [lindex $argv $index]}
   if {$index eq  1} {set PROBE [lindex $argv $index]}
   if {$index eq  2} {set hotspotNum [lindex $argv $index]}
-  if {$index eq  3} {set frameFirst [lindex $argv $index]}
-  if {$index eq  4} {set frameLast [lindex $argv $index]}
 }
 
 animate read pdb ./v-com-ok.pdb beg 0 end -1 skip 1 waitfor all
 
-if { $frameFirst eq "first" } {
-  set frameFirst 0
-}
-  
-if { $frameLast eq "last" } {
-  set frameLast [molinfo top get numframes]
-}
+set num_frames [molinfo top get numframes]
 
 set ofile [open _ligbo-ok.dat w]
 
-for {set f $frameFirst} {$f < $frameLast} {incr f} {
+for {set f 0} {$f < $num_frames} {incr f} {
 	molinfo top set frame $f
 
   set gluOxy [atomselect top "resname $PROBE and chain P and not hydrogen"]

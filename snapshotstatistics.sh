@@ -20,9 +20,9 @@ CHAIN='chain-list.dat'
 # probe molecule ID in pdb
 PROBE='probe-list.dat' 
 # first frame number for each trajectory 
-frameFirst='first'
+frameFirst='first-frame.dat'
 # last frame number for each trajectory        
-frameLast='last'
+frameLast='last-frame.dat'
 ######### Check here  #######
 
 for arg in `seq 1 "$#"`; do
@@ -72,7 +72,7 @@ if [[ $1 = "help" ]]; then
   exit
 fi
 
-# Set DCD, PDB, CHAIN and PROBE
+# Set DCD, PDB, CHAIN, PROBE, frameFirst and frameLast
 if [[ DCD != *dcd ]]; then
   DCD=`cat $DCD` || DCD=$DCD
 fi
@@ -117,6 +117,44 @@ for probe in $PROBE; do
 done
 echo ""
 
+if [[ -f $frameFirst ]]; then
+  frameFirst=`cat $frameFirst` 
+else
+  IFS=','
+fi
+
+i=0
+firstFramesString=""
+firstFramesArray=()
+for firstFrame in $frameFirst; do
+  if [[ i -ne 0 ]]; then
+    firstFramesString+=","
+  fi
+  firstFramesString+="$firstFrame"
+  firstFramesArray+=($firstFrame)
+  ((i++))
+done
+IFS=$' \t\n'
+
+if [[ -f $frameLast ]]; then
+  frameLast=`cat $frameLast` 
+else
+  IFS=','
+fi
+
+i=0
+lastFramesString=""
+lastFramesArray=()
+for lastFrame in $frameLast; do
+  if [[ i -ne 0 ]]; then
+    lastFramesString+=","
+  fi
+  lastFramesString+="$lastFrame"
+  lastFramesArray+=($lastFrame)
+  ((i++))
+done
+IFS=$' \t\n'
+
 if [[ -f $INDIR ]]; then
   INDIR=`cat $INDIR`
 fi
@@ -157,7 +195,7 @@ do
 
       mkdir __run
       cd __run
-      env VMDARGS='text with blanks' vmd -dispdev text -e $PHARMMAKER_HOME/snapshot1.tcl -args ../$PDB ../$DCD $CUTOFF $FPROBE $EE $FCHAIN $frameFirst $frameLast
+      env VMDARGS='text with blanks' vmd -dispdev text -e $PHARMMAKER_HOME/snapshot1.tcl -args ../$PDB ../$DCD $CUTOFF $FPROBE $EE $FCHAIN $firstFramesString $lastFramesString
       cd ..
 
       mv  __run/ligbo*  $resdir/
@@ -175,11 +213,11 @@ do
       fi
       
 
-      TNUM=`wc -l __test1 | awk '{print $1}'`
+      numHotspots=`wc -l __test1 | awk '{print $1}'`
 
       echo "/END/{i\\" > __test3
 
-      for (( mm = 1 ; mm <= $TNUM  ; mm++ ))
+      for (( mm = 1 ; mm <= $numHotspots  ; mm++ ))
       do
         sed -n -e "$mm,$mm p" __test1 > __test2
 
@@ -197,11 +235,11 @@ do
       rm _*
 
       #########
-      for (( FF = 1 ; FF <= $TNUM  ; FF++ ))
+      for (( FF = 1 ; FF <= $numHotspots  ; FF++ ))
       do
         cd $resdir
 
-        env VMDARGS='text with blanks' vmd -dispdev text -e $PHARMMAKER_HOME/snapshot2.tcl -args $CUTOFF2 $FPROBE $FF $frameFirst $frameLast
+        env VMDARGS='text with blanks' vmd -dispdev text -e $PHARMMAKER_HOME/snapshot2.tcl -args $CUTOFF2 $FPROBE $FF
 
         mv _ligbo-ok.dat ligbo-ok.$FF.dat
 
@@ -234,14 +272,14 @@ do
         cd ..
 
         #### Sort
-        KK=1
+        trajNum=1
         for traj in $DCD; do
           if [[ -f $resdir/tout-$FF.dat ]]; then
-            awk '{if ($2 == "'"$KK"'") print }' $resdir/tout-$FF.dat | sort -n -k4 >> $resdir/out-$FF.dat
-            awk '{if ($1 == "'"$KK"'") print }' $resdir/tout-res-$FF.dat | sort -n -k2 >> $resdir/out-res-$FF.dat
-            awk '{if ($1 == "'"$KK"'") print }' $resdir/tout-hotspot-$FF.dat | sort -n -k2 >> $resdir/out-hotspot-$FF.dat 
+            awk '{if ($2 == "'"$trajNum"'") print }' $resdir/tout-$FF.dat | sort -n -k4 >> $resdir/out-$FF.dat
+            awk '{if ($1 == "'"$trajNum"'") print }' $resdir/tout-res-$FF.dat | sort -n -k2 >> $resdir/out-res-$FF.dat
+            awk '{if ($1 == "'"$trajNum"'") print }' $resdir/tout-hotspot-$FF.dat | sort -n -k2 >> $resdir/out-hotspot-$FF.dat 
           fi
-          ((KK++))
+          ((trajNum++))
         done
         #### Sort
 
@@ -255,28 +293,21 @@ do
       rm    $resdir/v*pdb $resdir/lig* $resdir/z* $resdir/t*
 
       ######### outfr.dat
-      if [[ "$frameFirst" -eq "first" ]]; then
-        frameFirst=0
-      fi
 
-      if [[ "$frameLast" -eq "last" ]]; then
-        frameLast=`tail -n1 $resdir/out-?.dat | sort -n -k4 | tail -n1 | awk '{ print $NF }'`
-      fi
-
-      KK=1
+      trajNum=1
       for traj in $DCD
       do
-        for (( nn = $frameFirst ; nn <= $frameLast   ; nn++ ))
+        for (( nn = ${firstFramesArray[$trajNum]} ; nn <= ${lastFramesArray[$trajNum]}   ; nn++ ))
         do
-          CRAT=`awk '{if ($2 == "'"$KK"'" && $4 == "'"$nn"'" ) print }' ___tttt | wc -l | awk '{print $1}'`
+          CRAT=`awk '{if ($2 == "'"$trajNum"'" && $4 == "'"$nn"'" ) print }' ___tttt | wc -l | awk '{print $1}'`
 
           if [ $CRAT -ge 1 ]; then
-            PROBID=`grep "$KK $nn" $resdir/out-res-*.dat | head -n 1 | awk '{print $8}'`
-            PROBNU=`grep "$KK $nn" $resdir/out-res-*.dat | head -n 1 | awk '{print $9}'`
-            echo "SIM# $KK FRAME# $nn PROBE $PROBID PROBE# $PROBNU "  >> $resdir/outfr.dat
+            PROBID=`grep "$trajNum $nn" $resdir/out-res-*.dat | head -n 1 | awk '{print $8}'`
+            PROBNU=`grep "$trajNum $nn" $resdir/out-res-*.dat | head -n 1 | awk '{print $9}'`
+            echo "SIM# $trajNum FRAME# $nn PROBE $PROBID PROBE# $PROBNU "  >> $resdir/outfr.dat
           fi
         done
-        ((KK++))
+        ((trajNum++))
       done
       rm _*
       #########
