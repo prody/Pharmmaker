@@ -13,8 +13,8 @@ set PROBE     AAA
 set RESID     BBB
 set CHAIN     CCC
 set interval  1
-set frameFirst first
-set frameLast last
+set frameFirstList first
+set frameLastList last
 
 # Take parameter values from input arguments as far as possible
 for {set index 0} {$index < $argc -1} {incr index} {
@@ -24,8 +24,8 @@ for {set index 0} {$index < $argc -1} {incr index} {
   if {$index eq  3} {set PROBE [lindex $argv $index]}
   if {$index eq  4} {set RESID [lindex $argv $index]}
   if {$index eq  5} {set CHAIN [lindex $argv $index]}
-  if {$index eq  6} {set frameFirst [lindex $argv $index]}
-  if {$index eq  7} {set frameLast [lindex $argv $index]}
+  if {$index eq  6} {set frameFirstList [split [lindex $argv $index] ,]}
+  if {$index eq  7} {set frameLastList [split [lindex $argv $index] ,]}
 }
 
 set TRJNUM 1
@@ -41,10 +41,12 @@ foreach dcd_in $dcd_list {
   mol load pdb $struc
   mol addfile $dcd_in first 0 last -1 step $interval waitfor -1
 
+  set frameFirst [lindex $frameFirstList $TRJNUM]
   if { $frameFirst eq "first" } {
     set frameFirst 0
   }
-    
+  
+  set frameLast [lindex $frameFirstList $TRJNUM]
   if { $frameLast eq "last" } {
     set frameLast [molinfo top get numframes]
   }
@@ -60,7 +62,7 @@ foreach dcd_in $dcd_list {
   set allsysC [atomselect $traj_molid $allsys]
   ##### alignment 
 
-  for {set f $frameFirst} {$f < $frameLast} {incr f} {
+  for {set f $frameFirst} {$f <= $frameLast} {incr f} {
     molinfo top set frame $f
 
     ##### alignment
@@ -78,12 +80,10 @@ foreach dcd_in $dcd_list {
     set argNit [atomselect top "resname $PROBE and not hydrogen"]
     $argNit frame $f
     set Nlist [$argNit list]
-    set NNNN 0
     foreach atom1 $Olist {
       foreach atom2 $Nlist {
         set NOdist [measure bond [list [list $atom1] [list $atom2]]]
-        if {$NOdist < $CUTOFF1} {
-          set NNNN [expr $NNNN+1]
+        if { $NOdist < $CUTOFF1 } {
           set aato1 [expr $atom1+1]
           set aato2 [expr $atom2+1]
           set phe1 [atomselect [molinfo top get id] "serial $aato2"]

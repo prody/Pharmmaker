@@ -253,7 +253,19 @@ proc calcBindingValues { sites strucs dcd_list CHAINS PROBES RESIDFIRST RESIDLAS
         mol addfile $dcd_in first 0 last -1 step 1 waitfor -1
 
         set first_frame [lindex $::highAff::frameRange 0]
-        set num_frames [llength $::highAff::frameRange]
+        set last_frame [lindex $::highAff::frameRange end]
+
+        set frame_file1 [open ../first-frame.dat a]
+        puts $frame_file1 $first_frame
+        flush $frame_file1
+        close $frame_file1
+
+        set frame_file2 [open ../last-frame.dat a]
+        puts $frame_file2 $last_frame
+        flush $frame_file2
+        close $frame_file2
+
+        exit
 
         puts ""
         # start loop for frame
@@ -261,7 +273,7 @@ proc calcBindingValues { sites strucs dcd_list CHAINS PROBES RESIDFIRST RESIDLAS
           molinfo top set frame $f
           #puts ""
           if { [expr $f % 100] eq 0} {
-            puts "starting loop for frame $f of $num_frames (using chain $CHAIN residues near site $site)"
+            puts "starting loop for frame $f in frames $first_frame to $last_frame (using chain $CHAIN residues near site $site)"
           }
 
           # start loop for probes
@@ -310,10 +322,8 @@ proc calcBindingValues { sites strucs dcd_list CHAINS PROBES RESIDFIRST RESIDLAS
               }
               $gluOxy delete
 
-              #puts $DISTSUM
               set DISTSUMS($siteNum,$chainNum,$probeNum,$resCounter) $DISTSUM
-              if { $f eq [expr $num_frames - 1]} {
-                #puts "$siteNum $site $chainNum $CHAIN $probeNum $PROBE $resCounter $rrr $DISTSUM"
+              if { $f eq [expr $last_frame]} {
 
                 set ofile [open $site_string/$CHAIN-$PROBE.dat a]
                 
@@ -602,13 +612,7 @@ proc refineResidRange { resid_range chain refiner } {
 
 if {[catch { 
 
-  if { $::highAff::bv_cutoff == 0} {
-
-    if { [info exists ::highAff::struc] == 0 } {
-      puts "Please provide a starting structure file for the simulation"
-    } elseif { [info exists ::highAff::dcd_in] == 0 } {
-      puts "Please provide a trajectory file for the simulation"
-    } else {
+    if { [info exists ::highAff::struc] == 1 && [info exists ::highAff::dcd_in] == 1 } {
 
       set ::highAff::mol_ID -1
       # This means that we get to mol ID 0 when we increment it the first time
@@ -645,13 +649,16 @@ if {[catch {
 
       calcBindingValues $::highAff::region_refiner $::highAff::struc $::highAff::dcd_in $::highAff::CHAIN $::highAff::PROBE $::highAff::RESIDFIRST $::highAff::RESIDLAST $::highAff::bv_cutoff $::highAff::frameFIRST $::highAff::frameLAST
 
+    } elseif { [info exists ::highAff::struc] == 0 } {
+      puts "Please provide a starting structure file for the simulation to calculate binding values"
+    } elseif { [info exists ::highAff::dcd_in] == 0 } {
+      puts "Please provide a trajectory file for the simulation to calculate binding values"
     }
     # end if for checking that we have starting structure and trajectory files
-
-  } else {
-
+  } 
+  
+  if { $::highAff::bv_cutoff != 0} {
     cutoffHighAffinityResidues $::highAff::bv_cutoff
-
   }
   # end if for checking whether the binding value cutoff is 0 for not
   
